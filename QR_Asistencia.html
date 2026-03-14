@@ -1,330 +1,289 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Acceso QR - SLIM N°3</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-        }
-        .animate-fade-in-up {
-            animation: fadeInUp 0.5s ease-out;
-        }
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    </style>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Control de Asistencia</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 500px;
+      width: 100%;
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px 20px;
+      text-align: center;
+    }
+    .header h1 { font-size: 22px; font-weight: 800; margin-bottom: 5px; }
+    .header p { font-size: 13px; opacity: 0.9; }
+    .content { padding: 30px 20px; }
+    .loader {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .status-card {
+      background: #f8f9fa;
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+    }
+    .status-icon { font-size: 64px; margin-bottom: 15px; }
+    .status-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #1a1a1a;
+    }
+    .status-message {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.6;
+    }
+    .info-box {
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label {
+      font-size: 11px;
+      color: #999;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .info-value {
+      font-size: 14px;
+      color: #1a1a1a;
+      font-weight: 700;
+      text-align: right;
+      max-width: 60%;
+      word-break: break-word;
+    }
+    .footer {
+      background: #f8f9fa;
+      padding: 20px;
+      text-align: center;
+      border-top: 1px solid #e0e0e0;
+    }
+    .footer p { font-size: 11px; color: #999; }
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+    .warning { color: #f59e0b; }
+  </style>
 </head>
-<body class="bg-gradient-to-br from-slate-800 via-slate-900 to-indigo-900 min-h-screen flex items-center justify-center p-4">
-
-    <div class="glass-panel w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden border border-slate-700/30">
-        
-        <!-- Encabezado -->
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-center relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-            <span class="material-icons-round text-4xl text-white mb-1 relative z-10">qr_code_scanner</span>
-            <h1 class="text-white text-lg font-bold tracking-wide relative z-10">Control de Asistencia</h1>
-            <p class="text-blue-100 text-xs opacity-90 relative z-10">Sindicato SLIM N°3</p>
-        </div>
-
-        <!-- Contenido Dinámico -->
-        <div class="p-4 text-center">
-            
-            <!-- Loader -->
-            <div id="loader" class="hidden flex flex-col items-center justify-center py-3">
-                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-3"></div>
-                <p class="text-slate-600 text-xs font-medium animate-pulse">Procesando solicitud...</p>
-            </div>
-
-            <!-- Estado Inicial / Resultados -->
-            <div id="content-area" class="space-y-3">
-                <p class="text-slate-500 italic text-sm">Esperando acción...</p>
-            </div>
-
-        </div>
-
-        <!-- Footer con ID del dispositivo -->
-        <div class="bg-slate-50 p-2 text-center border-t border-slate-200">
-            <p class="text-[10px] text-slate-400">
-                RUT Registrado: <span id="device-id" class="font-mono font-bold text-slate-600">No registrado</span>
-            </p>
-        </div>
-
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="material-icons-round" style="font-size: 60px;">event_available</span>
+      <h1>Control de Asistencia</h1>
+      <p>Sindicato SLIM n°3</p>
     </div>
+    
+    <div class="content" id="content-area">
+      <div class="loader" id="loader">
+        <div class="spinner"></div>
+        <p style="color: #666; font-size: 14px;" id="loader-text">Verificando asistencia...</p>
+      </div>
+      <div id="result" style="display: none;"></div>
+    </div>
+    
+    <div class="footer">
+      <p>Sistema de Registro de Asistencia QR</p>
+    </div>
+  </div>
 
-    <script>
-        const params = <?!= JSON.stringify(data) ?>; 
-        const STORAGE_KEY = 'qr_access_rut';
-
-        const loader = document.getElementById('loader');
-        const contentArea = document.getElementById('content-area');
-        const deviceLabel = document.getElementById('device-id');
-
-        function showLoader(show) {
-            if (show) {
-                loader.classList.remove('hidden');
-                contentArea.classList.add('hidden');
+  <script>
+    const STORAGE_KEY = 'qr_access_rut';
+    const params = <?!= JSON.stringify(params) ?>;
+    let timeoutId;
+    
+    window.onload = function() {
+      const rutUsuario = localStorage.getItem(STORAGE_KEY);
+      const nombreControl = params.control || params.asamblea || '';
+      
+      console.log('📱 RUT en localStorage:', rutUsuario);
+      console.log('📍 Control:', nombreControl);
+      
+      if (!rutUsuario) {
+        mostrarError(
+          'Dispositivo No Vinculado',
+          'Primero debes vincular tu dispositivo escaneando tu código QR personal. Acércate a la directiva del sindicato.'
+        );
+        return;
+      }
+      
+      if (!nombreControl) {
+        mostrarError(
+          'QR Inválido',
+          'Este código QR no contiene información válida de punto de control.'
+        );
+        return;
+      }
+      
+      registrarAsistencia(rutUsuario, nombreControl);
+    };
+    
+    function registrarAsistencia(rut, control) {
+      console.log('🚀 Registrando:', rut, control);
+      
+      timeoutId = setTimeout(function() {
+        document.getElementById('loader').style.display = 'none';
+        mostrarError('Tiempo Agotado', 'El servidor no respondió a tiempo.');
+      }, 30000);
+      
+      google.script.run
+        .withSuccessHandler(function(response) {
+          clearTimeout(timeoutId);
+          document.getElementById('loader').style.display = 'none';
+          
+          if (response.success) {
+            mostrarExito(response);
+          } else {
+            if (response.yaRegistrado) {
+              mostrarAdvertencia(response.message);
             } else {
-                loader.classList.add('hidden');
-                contentArea.classList.remove('hidden');
+              mostrarError('Error', response.message);
             }
-        }
-
-        function updateStatus(icon, title, message, colorClass, detailedInfo = null) {
-            let detailsHTML = '';
+          }
+        })
+        .withFailureHandler(function(error) {
+          clearTimeout(timeoutId);
+          document.getElementById('loader').style.display = 'none';
+          mostrarError('Error de Conexión', 'No se pudo conectar con el servidor.');
+          console.error(error);
+        })
+        .registrarAsistencia(rut, control);
+    }
+    
+    function mostrarExito(data) {
+        const resultDiv = document.getElementById('result');
+        
+        // Mensaje adicional sobre el correo
+        let mensajeCorreo = '';
+        if (data.mensajeCorreo) {
+            const iconoCorreo = data.correoEnviado ? 'mail' : 'mail_outline';
+            const colorCorreo = data.correoEnviado ? 'text-green-600' : 'text-amber-600';
             
-            if (detailedInfo) {
-                detailsHTML = `
-                    <div class="bg-white rounded-xl p-2.5 mt-2 text-left shadow-md border border-slate-200">
-                        <div class="space-y-1">
-                            <div>
-                                <p class="text-[9px] text-slate-500 font-semibold mb-0">Nombre:</p>
-                                <p class="text-[11px] text-slate-800 font-bold leading-tight">${detailedInfo.nombre}</p>
-                            </div>
-                            <div>
-                                <p class="text-[9px] text-slate-500 font-semibold mb-0">RUT:</p>
-                                <p class="text-[11px] text-slate-800 font-bold">${detailedInfo.rut}</p>
-                            </div>
-                            <div>
-                                <p class="text-[9px] text-slate-500 font-semibold mb-0">Asamblea:</p>
-                                <p class="text-[11px] text-slate-800 font-bold leading-tight">${detailedInfo.asamblea}</p>
-                            </div>
-                            <div>
-                                <p class="text-[9px] text-slate-500 font-semibold mb-0">Hora:</p>
-                                <p class="text-[11px] text-slate-800 font-bold">${detailedInfo.hora}</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            contentArea.innerHTML = `
-                <div class="flex flex-col items-center animate-fade-in-up">
-                    <div class="rounded-full p-2 ${colorClass} bg-opacity-10 mb-1.5">
-                        <span class="material-icons-round text-2xl ${colorClass}">${icon}</span>
-                    </div>
-                    <h2 class="text-sm font-bold text-slate-800 mb-0.5">${title}</h2>
-                    <p class="text-slate-600 text-[11px] leading-snug mb-1.5">${message}</p>
-                    ${detailsHTML}
-                </div>
-            `;
-        }
-
-        function formatRutDisplay(rut) {
-            if (!rut) return "";
-            let value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
-            if (value.length < 2) return value;
-            const body = value.slice(0, -1);
-            const dv = value.slice(-1);
-            let formattedBody = "";
-            for (let i = body.length - 1, j = 0; i >= 0; i--, j++) {
-                formattedBody = body.charAt(i) + ((j > 0 && j % 3 === 0) ? "." : "") + formattedBody;
-            }
-            return formattedBody + "-" + dv;
-        }
-
-        function addBackButton() {
-            const backButtonHTML = `
-                <div class="mt-3 pt-3 border-t border-slate-200">
-                    <div class="bg-green-50 border-l-4 border-green-400 p-3 rounded-lg">
-                        <div class="flex items-start">
-                            <span class="material-icons-round text-green-600 mr-2 text-xl">check_circle</span>
-                            <div>
-                                <h3 class="text-xs font-bold text-green-800 mb-0.5">Operación completada</h3>
-                                <p class="text-[10px] text-green-700">Ya puedes cerrar esta ventana.</p>
-                            </div>
-                        </div>
+            mensajeCorreo = `
+                <div class="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div class="flex items-start gap-2">
+                        <span class="material-icons-round ${colorCorreo} text-lg">${iconoCorreo}</span>
+                        <p class="text-xs text-slate-700">${data.mensajeCorreo}</p>
                     </div>
                 </div>
             `;
-            
-            // Agregar el botón al contenido existente sin duplicar
-            const currentContent = contentArea.innerHTML;
-            contentArea.innerHTML = currentContent + backButtonHTML;
         }
-
-        window.onload = function() {
-            const localUser = localStorage.getItem(STORAGE_KEY);
-            
-            if (localUser) {
-                deviceLabel.innerText = formatRutDisplay(localUser);
-                deviceLabel.classList.add('text-green-600');
-            }
-
-            const action = params.action;
-            const asamblea = params.asamblea;
-            const rutFromUrl = params.rut;
-
-            // CASO 1: Registro del Dispositivo (QR Personal del Usuario)
-            if (action === "register") {
-                if (rutFromUrl) {
-                    handleRegistration(rutFromUrl);
-                } else {
-                    updateStatus(
-                        'qr_code_2', 
-                        'Bienvenido', 
-                        'Para comenzar a registrar su asistencia con el sistema QR, debe solicitar presencialmente la vinculación de su teléfono al sistema a través de un dirigente de la organización. Este trámite solo se realiza una vez o cada vez que cambie de dispositivo.', 
-                        'text-slate-500'
-                    );
-                }
-            } 
-            // CASO 2: Fichaje (QR en Punto de Control)
-            else if (action === "checkin") {
-                if (!localUser) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Dispositivo no registrado',
-                        text: 'Primero debes escanear tu código QR personal para configurar este dispositivo.',
-                        confirmButtonText: 'Entendido',
-                        confirmButtonColor: '#2563EB'
-                    });
-                    updateStatus(
-                        'smartphone', 
-                        'No Registrado', 
-                        'Primero debes registrar tu dispositivo en el sistema del sindicato. Para esto, acércate presencialmente a una oficina de nuestra organización.', 
-                        'text-red-500'
-                    );
-                } else {
-                    handleCheckin(localUser, asamblea || "Asamblea Desconocida");
-                }
-            } 
-            // CASO 3: Vista por defecto
-            else {
-                if (localUser) {
-                    updateStatus(
-                        'account_circle', 
-                        'Dispositivo Vinculado', 
-                        `Hola, estás identificado como <b>${formatRutDisplay(localUser)}</b>.<br><br>Para registrar tu asistencia, escanea el código QR del punto de control. Serás dirigido al sistema de registro QR del Sindicato SLIM N°3.`, 
-                        'text-blue-500'
-                    );
-                } else {
-                    updateStatus(
-                        'qr_code_2', 
-                        'Bienvenido', 
-                        'Para comenzar, escanea tu código QR personal de registro.', 
-                        'text-slate-500'
-                    );
-                }
-            }
-        };
-
-        function handleRegistration(rut) {
-            showLoader(true);
-            google.script.run
-                .withSuccessHandler(function(response) {
-                    showLoader(false);
-                    if (response.success) {
-                        localStorage.setItem(STORAGE_KEY, rut);
-                        deviceLabel.innerText = formatRutDisplay(rut);
-                        deviceLabel.classList.add('text-green-600');
-                        
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Bienvenido!',
-                            html: `Dispositivo registrado correctamente para:<br><strong>${response.nombre}</strong>`,
-                            timer: 3000,
-                            showConfirmButton: false
-                        });
-                        
-                        updateStatus(
-                            'check_circle', 
-                            'Registro Exitoso', 
-                            `Dispositivo vinculado a <b>${response.nombre}</b>.`, 
-                            'text-green-500'
-                        );
-                        
-                        addBackButton();
-                        
-                    } else {
-                        localStorage.removeItem(STORAGE_KEY);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Acceso Denegado',
-                            text: response.error,
-                        });
-                        updateStatus(
-                            'cancel', 
-                            'Error de Registro', 
-                            response.error, 
-                            'text-red-500'
-                        );
-                    }
-                })
-                .withFailureHandler(function(err) {
-                    showLoader(false);
-                    Swal.fire('Error', 'Error de conexión: ' + err, 'error');
-                })
-                .validarUsuarioQR(rut);
-        }
-
-        function handleCheckin(rut, asamblea) {
-            showLoader(true);
-            google.script.run
-                .withSuccessHandler(function(response) {
-                    showLoader(false);
-                    
-                    const horaRegistro = response.fecha.split(' ')[1] || new Date().toLocaleTimeString('es-CL');
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Registrado!',
-                        html: `<div class="text-left text-sm space-y-1">
-                                <p><b>Nombre:</b> ${response.nombre}</p>
-                                <p><b>RUT:</b> ${formatRutDisplay(response.rut)}</p>
-                                <p><b>Asamblea:</b> ${asamblea}</p>
-                                <p><b>Hora:</b> ${horaRegistro}</p>
-                               </div>`,
-                        timer: 4000,
-                        timerProgressBar: true,
-                        confirmButtonColor: '#16A34A'
-                    });
-                    
-                    updateStatus(
-                        'check_circle', 
-                        'Asistencia Registrada', 
-                        'Tu asistencia ha sido registrada exitosamente.', 
-                        'text-green-600',
-                        {
-                            nombre: response.nombre,
-                            rut: formatRutDisplay(response.rut),
-                            asamblea: asamblea,
-                            hora: horaRegistro
-                        }
-                    );
-                    
-                    addBackButton();
-                })
-                .withFailureHandler(function(err) {
-                    showLoader(false);
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Atención',
-                        text: err.message || err
-                    });
-                    updateStatus(
-                        'warning', 
-                        'No se pudo registrar', 
-                        err.message || err, 
-                        'text-red-500'
-                    );
-                })
-                .checkinQR(rut, asamblea);
-        }
-    </script>
+        
+        resultDiv.innerHTML = `
+            <div class="status-card">
+                <div class="status-icon success">
+                    <span class="material-icons-round" style="font-size: 64px;">check_circle</span>
+                </div>
+                <div class="status-title">¡Asistencia Registrada!</div>
+                <div class="status-message">Tu asistencia ha sido registrada exitosamente.</div>
+                
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Nombre</span>
+                        <span class="info-value">${data.nombre}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">RUT</span>
+                        <span class="info-value">${formatRut(data.rut)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Actividad</span>
+                        <span class="info-value">${data.asamblea}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Fecha/Hora</span>
+                        <span class="info-value">${data.fecha}</span>
+                    </div>
+                </div>
+                
+                ${mensajeCorreo}
+            </div>
+        `;
+        resultDiv.style.display = 'block';
+    }
+    
+    function mostrarError(titulo, mensaje) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = `
+        <div class="status-card">
+          <div class="status-icon error">
+            <span class="material-icons-round" style="font-size: 64px;">error</span>
+          </div>
+          <div class="status-title">${titulo}</div>
+          <div class="status-message">${mensaje}</div>
+        </div>
+      `;
+      resultDiv.style.display = 'block';
+    }
+    
+    function mostrarAdvertencia(mensaje) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = `
+        <div class="status-card">
+          <div class="status-icon warning">
+            <span class="material-icons-round" style="font-size: 64px;">warning</span>
+          </div>
+          <div class="status-title">Ya Registrado</div>
+          <div class="status-message">${mensaje}</div>
+        </div>
+      `;
+      resultDiv.style.display = 'block';
+    }
+    
+    function formatRut(rut) {
+      if (!rut) return '';
+      const cleaned = rut.replace(/\./g, '').replace(/-/g, '');
+      const dv = cleaned.slice(-1);
+      const numero = cleaned.slice(0, -1);
+      return numero.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '-' + dv;
+    }
+  </script>
 </body>
 </html>
