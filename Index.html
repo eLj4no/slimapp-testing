@@ -1501,6 +1501,73 @@
         </div>
       </section>
 
+      <!-- VISTA: SLIM QUEST LEADERBOARD -->
+      <section id="slim-quest-leaderboard-view" class="hidden w-full max-w-2xl z-20 flex-col glass-panel rounded-xl shadow-2xl overflow-hidden fade-in-up my-4">
+
+        <!-- HEADER -->
+        <div class="bg-slate-900 text-white p-4 flex items-center gap-3 relative overflow-hidden flex-shrink-0">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500 rounded-full blur-3xl opacity-20 -mr-10 -mt-10"></div>
+          <button onclick="switchView('slim-quest-view')" class="z-10 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
+            <span class="material-icons-round">arrow_back</span>
+          </button>
+          <div class="z-10 flex-1">
+            <h2 class="text-base font-bold leading-tight">Clasificación</h2>
+            <p class="text-[10px] text-white/60 font-medium">Top socios por XP acumulado</p>
+          </div>
+          <div class="z-10 w-9 h-9 rounded-full bg-amber-500/20 border border-amber-400/30 flex items-center justify-center">
+            <span class="material-icons-round text-amber-400 text-xl">emoji_events</span>
+          </div>
+        </div>
+
+        <!-- BODY -->
+        <div class="flex-grow overflow-y-auto bg-slate-50/50 p-4 space-y-3">
+
+          <!-- LOADER -->
+          <div id="lb-loader" class="flex flex-col items-center justify-center py-12">
+            <div class="loader mb-3"></div>
+            <p class="text-xs text-slate-400">Cargando clasificación...</p>
+          </div>
+
+          <!-- CONTENIDO -->
+          <div id="lb-content" class="hidden space-y-3">
+
+            <!-- BANNER INFORMATIVO -->
+            <div class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200 p-3 flex items-center gap-3">
+              <span class="material-icons-round text-amber-500 text-xl flex-shrink-0">info</span>
+              <p class="text-xs text-amber-800 leading-relaxed">
+                Ranking por <strong>XP total acumulado</strong>. ¡Completa quizzes diarios para subir posiciones!
+              </p>
+            </div>
+
+            <!-- MI POSICIÓN (visible siempre, muestra posición real) -->
+            <div id="lb-mi-posicion" class="hidden bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-200 p-3">
+              <p class="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-2">Tu posición</p>
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0" id="lb-mi-num">#–</div>
+                <div class="flex-1">
+                  <div class="text-sm font-bold text-slate-800">Tú</div>
+                  <div class="text-xs text-slate-500" id="lb-mi-grado-xp">–</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TOP 10 -->
+            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div class="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+                <span class="material-icons-round text-amber-500 text-base">military_tech</span>
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Top 10 Socios</span>
+              </div>
+              <div id="lb-lista" class="divide-y divide-slate-100"></div>
+              <div id="lb-empty" class="hidden text-center py-10">
+                <span class="material-icons-round text-4xl text-slate-300 block mb-2">leaderboard</span>
+                <p class="text-sm text-slate-400">Aún no hay socios con XP acumulado.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
       <!-- VISTA: SLIM QUEST — QUIZ EN JUEGO -->
       <section id="slim-quest-quiz-view" class="hidden w-full max-w-2xl z-20 flex-col glass-panel rounded-xl shadow-2xl overflow-hidden fade-in-up my-4 h-[90vh]">
 
@@ -1578,7 +1645,7 @@
             <h2 class="text-lg font-bold">SLIM Quest</h2>
             <p class="text-xs text-white/60">Aprende · Participa · Progresa</p>
           </div>
-          <div id="sq-grado-badge" class="z-10 text-xs font-bold bg-purple-600/80 px-3 py-1 rounded-full"></div>
+          <div id="sq-grado-badge" onclick="mostrarInfoGrado()" class="z-10 text-xs font-bold bg-purple-600/80 px-3 py-1 rounded-full cursor-pointer active:scale-95 transition hover:bg-purple-500/90"></div>
         </div>
 
         <!-- Loader -->
@@ -1652,16 +1719,32 @@
               <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full font-medium">Pronto</span>
             </div>
 
-            <!-- Próximamente: Leaderboard -->
-            <div class="glass-card rounded-xl p-4 flex items-center gap-4 opacity-50">
-              <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center flex-shrink-0">
+            <!-- Clasificación - ACTIVO -->
+            <div class="glass-card rounded-xl p-4 flex items-center gap-4 cursor-pointer active:scale-[0.98] transition hover:shadow-md hover:border-amber-200"
+                onclick="cargarLeaderboard()">
+              <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
                 <span class="material-icons-round text-2xl">leaderboard</span>
               </div>
               <div class="flex-1">
-                <div class="font-bold text-slate-600 text-sm">Clasificación</div>
-                <div class="text-xs text-slate-400 mt-0.5">Top socios del mes · Próximamente</div>
+                <div class="font-bold text-slate-800 text-sm">Clasificación</div>
+                <div class="text-xs text-slate-500 mt-0.5">Top socios · XP acumulado</div>
               </div>
-              <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full font-medium">Pronto</span>
+              <span class="material-icons-round text-slate-400 text-lg">chevron_right</span>
+            </div>
+
+            <!-- Nivel Secreto Dirigente -->
+            <div id="sq-nivel-secreto" class="hidden rounded-xl p-4 flex items-center gap-4 cursor-pointer active:scale-[0.98] transition"
+                style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);border:1.5px solid #a78bfa;"
+                onclick="iniciarQuizSecreto()">
+              <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                  style="background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.4);">
+                <span class="material-icons-round text-2xl" style="color:#f5d060;">auto_awesome</span>
+              </div>
+              <div class="flex-1">
+                <div class="font-bold text-sm" style="color:#f5d060;">Nivel Secreto</div>
+                <div class="text-xs mt-0.5" style="color:#a78bfa;">Teoría Dirigencial · El Capital y Economía Política</div>
+              </div>
+              <div class="text-xs font-bold px-2 py-1 rounded-full" style="background:rgba(245,208,96,0.15);color:#f5d060;border:1px solid rgba(245,208,96,0.3);">🔐</div>
             </div>
 
           </div>
@@ -2863,11 +2946,17 @@
           showWarning("No puedes realizar gestiones sindicales debido a que tu estado dentro de la organización es DESVINCULADO. Si crees que existe un error, comunícate con la directiva de la organización.");
           return;
         }
+        // Validar si el usuario es TESTING (acceso restringido a Mis Datos y SLIM Quest)
+        if (currentUserRole && currentUserRole.toUpperCase() === 'TESTING' &&
+          !['dashboard-view', 'profile-view', 'slim-quest-view', 'slim-quest-quiz-view', 'slim-quest-leaderboard-view', 'logout-view', 'login-view'].includes(viewId)) {
+          showWarning("Esta sección no está disponible para tu perfil de acceso.");
+          return;
+        }
         
-        ['login-view','dashboard-view','logout-view','profile-view','loans-view','justifications-view','appeals-view','attendance-records-view','permission-view','admin-panel-view','management-view','id-credential-view','slim-quest-view','slim-quest-quiz-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        ['login-view','dashboard-view','logout-view','profile-view','loans-view','justifications-view','appeals-view','attendance-records-view','permission-view','admin-panel-view','management-view','id-credential-view','slim-quest-view','slim-quest-quiz-view','slim-quest-leaderboard-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
         const view = document.getElementById(viewId);
         view.classList.remove('hidden');
-        if (['dashboard-view','profile-view','loans-view','justifications-view','appeals-view','attendance-records-view','permission-view','admin-panel-view','management-view','id-credential-view','slim-quest-view','slim-quest-quiz-view'].includes(viewId)) view.classList.add('flex');
+        if (['dashboard-view','profile-view','loans-view','justifications-view','appeals-view','attendance-records-view','permission-view','admin-panel-view','management-view','id-credential-view','slim-quest-view','slim-quest-quiz-view','slim-quest-leaderboard-view'].includes(viewId)) view.classList.add('flex');
       }
 
       function handleLogout() {
@@ -2917,6 +3006,13 @@
         
         if (esDesvinculado && !esAdmin && module !== 'Mis Datos') {
           showWarning("No puedes realizar gestiones sindicales debido a que tu estado dentro de la organización es DESVINCULADO. Si crees que existe un error, comunícate con la directiva de la organización.");
+          return;
+        }
+
+        // ========== VALIDACIÓN ROL TESTING ==========
+        const esTesting = (role === 'TESTING');
+        if (esTesting && module !== 'Mis Datos' && module !== 'MiProgreso') {
+          showWarning("Este módulo no está disponible para tu perfil de acceso. Solo puedes acceder a 'Mis Datos' y 'SLIM Quest'.");
           return;
         }
         
@@ -4870,6 +4966,14 @@ divForm.classList.add('flex');
               return;
             }
 
+            // ── Mostrar nivel secreto solo si el grado es Dirigente ──────────────
+            var tarjetaSecreta = document.getElementById('sq-nivel-secreto');
+            if (res.grado && res.grado.nombre === 'Dirigente') {
+              tarjetaSecreta.classList.remove('hidden');
+            } else {
+              tarjetaSecreta.classList.add('hidden');
+            }
+
             // Poblar interfaz con datos reales
             const grado = res.grado || {};
             const sigGrado = res.gradoSiguiente;
@@ -4879,6 +4983,7 @@ divForm.classList.add('flex');
               : 100;
 
             document.getElementById('sq-grado-badge').innerText = (grado.icono || '') + ' ' + (grado.nombre || 'Aspirante');
+            _currentGradoNombre = grado.nombre || 'Aspirante';
             document.getElementById('sq-grado-icon').innerText = grado.icono || '🌱';
             document.getElementById('sq-grado-nombre').innerText = grado.nombre || 'Aspirante';
             document.getElementById('sq-xp-label').innerText = res.xp + ' XP';
@@ -4933,11 +5038,100 @@ divForm.classList.add('flex');
       }
 
       // ─── Estado del quiz en memoria ──────────────────────────────────────────────
+      var _currentGradoNombre = 'Aspirante';
       var _quizPreguntas   = [];
       var _quizIndice      = 0;
       var _quizCorrectas   = 0;
       var _quizXPAcumulado = 0;
       var _quizRespondida  = false;
+
+      function cargarLeaderboard() {
+        switchView('slim-quest-leaderboard-view');
+        document.getElementById('lb-loader').classList.remove('hidden');
+        document.getElementById('lb-content').classList.add('hidden');
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            document.getElementById('lb-loader').classList.add('hidden');
+
+            if (!res.success || !res.top10) {
+              showWarning(res.message || 'No se pudo cargar la clasificación.');
+              switchView('slim-quest-view');
+              return;
+            }
+
+            var lista  = document.getElementById('lb-lista');
+            var empty  = document.getElementById('lb-empty');
+            lista.innerHTML = '';
+
+            if (res.top10.length === 0) {
+              empty.classList.remove('hidden');
+            } else {
+              empty.classList.add('hidden');
+              var medallas = ['🥇','🥈','🥉'];
+              var colores  = {
+                'Aspirante' :'bg-green-100 text-green-700',
+                'Aprendiz'  :'bg-cyan-100 text-cyan-700',
+                'Trabajador':'bg-blue-100 text-blue-700',
+                'Defensor'  :'bg-purple-100 text-purple-700',
+                'Negociador':'bg-orange-100 text-orange-700',
+                'Dirigente' :'bg-amber-100 text-amber-700'
+              };
+
+              res.top10.forEach(function(s) {
+                var medal      = medallas[s.posicion - 1] || '';
+                var xpFmt      = s.xp.toLocaleString('es-CL');
+                var colorGrado = colores[s.grado.nombre] || 'bg-slate-100 text-slate-600';
+                var fila       = document.createElement('div');
+
+                fila.className = 'flex items-center gap-3 px-4 py-3 transition ' +
+                  (s.esMio ? 'bg-indigo-50 border-l-4 border-indigo-400' : 'hover:bg-slate-50');
+
+                fila.innerHTML =
+                  '<div class="w-7 text-center flex-shrink-0">' +
+                    (medal
+                      ? '<span class="text-xl leading-none">' + medal + '</span>'
+                      : '<span class="text-sm font-bold text-slate-400">#' + s.posicion + '</span>') +
+                  '</div>' +
+                  '<div class="flex-1 min-w-0">' +
+                    '<div class="text-sm font-bold text-slate-800 truncate">' +
+                      (s.esMio ? '⭐ Tú' : s.nombre) +
+                    '</div>' +
+                    '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 ' + colorGrado + '">' +
+                      s.grado.icono + ' ' + s.grado.nombre +
+                    '</span>' +
+                  '</div>' +
+                  '<div class="text-right flex-shrink-0">' +
+                    '<div class="text-sm font-bold text-slate-800">' + xpFmt + '</div>' +
+                    '<div class="text-[10px] text-slate-400 font-medium">XP</div>' +
+                  '</div>';
+
+                lista.appendChild(fila);
+              });
+            }
+
+            // Mostrar posición propia
+            var miPos = res.miPosicion;
+            var miDiv = document.getElementById('lb-mi-posicion');
+            if (miPos) {
+              document.getElementById('lb-mi-num').innerText     = '#' + miPos.posicion;
+              document.getElementById('lb-mi-grado-xp').innerText =
+                miPos.grado.icono + ' ' + miPos.grado.nombre +
+                ' · ' + miPos.xp.toLocaleString('es-CL') + ' XP';
+              miDiv.classList.remove('hidden');
+            } else {
+              miDiv.classList.add('hidden');
+            }
+
+            document.getElementById('lb-content').classList.remove('hidden');
+          })
+          .withFailureHandler(function(err) {
+            document.getElementById('lb-loader').classList.add('hidden');
+            showWarning('Error: ' + (err.message || err));
+            switchView('slim-quest-view');
+          })
+          .getLeaderboard(currentRut);
+      }
 
       function iniciarQuizDiario() {
         switchView('slim-quest-quiz-view');
@@ -4964,6 +5158,136 @@ divForm.classList.add('flex');
             switchView('slim-quest-view');
           })
           .obtenerPreguntasQuiz(currentRut, 5);
+      }
+
+      // ==========================================
+      // MODAL DE INFORMACIÓN DE NIVEL — SLIM QUEST
+      // ==========================================
+      function mostrarInfoGrado() {
+        var GRADOS_INFO = {
+          'Aspirante':  { headerBg:'#15803d', color:'#22c55e', badgeBg:'#dcfce7', badgeText:'#14532d', icono:'🌱', nivel:'1 de 6', xpMin:'0', xpMax:'1.500', quote:'Cada gran viaje comienza con el primer paso. ¡Has dado el tuyo!', nextIcono:'⚙️', nextNombre:'Aprendiz', nextXp:'1.501', msg:'Tu participación en SLIM Quest ha comenzado. Cada quiz diario te acerca más a convertirte en un referente sindical de la organización.' },
+          'Aprendiz':   { headerBg:'#1d4ed8', color:'#3b82f6', badgeBg:'#dbeafe', badgeText:'#1e3a8a', icono:'⚙️', nivel:'2 de 6', xpMin:'1.501', xpMax:'4.500', quote:'El conocimiento es la herramienta más poderosa del movimiento sindical.', nextIcono:'🔩', nextNombre:'Trabajador', nextXp:'4.501', msg:'Tu constancia está dando frutos. Ya dominas los fundamentos sindicales y estás construyendo una base sólida de conocimiento.' },
+          'Trabajador': { headerBg:'#c2410c', color:'#f97316', badgeBg:'#ffedd5', badgeText:'#7c2d12', icono:'🔩', nivel:'3 de 6', xpMin:'4.501', xpMax:'10.000', quote:'El trabajo organizado mueve montañas. Tú eres la fuerza del sindicato.', nextIcono:'🛡️', nextNombre:'Defensor', nextXp:'10.001', msg:'Tu dedicación refleja los valores fundamentales de la organización. Eres un ejemplo de compromiso para tus compañeros.' },
+          'Defensor':   { headerBg:'#6d28d9', color:'#8b5cf6', badgeBg:'#ede9fe', badgeText:'#4c1d95', icono:'🛡️', nivel:'4 de 6', xpMin:'10.001', xpMax:'18.000', quote:'Defender los derechos colectivos es el corazón del sindicalismo.', nextIcono:'⚖️', nextNombre:'Negociador', nextXp:'18.001', msg:'Has demostrado un compromiso profundo con los valores y derechos de la organización. Eres un pilar fundamental del Sindicato SLIM N°3.' },
+          'Negociador': { headerBg:'#b45309', color:'#d97706', badgeBg:'#fef3c7', badgeText:'#78350f', icono:'⚖️', nivel:'5 de 6', xpMin:'18.001', xpMax:'30.000', quote:'La negociación efectiva nace del conocimiento profundo y la preparación incansable.', nextIcono:'🏆', nextNombre:'Dirigente', nextXp:'30.001', msg:'Tu nivel de preparación y conocimiento te posiciona entre los socios más destacados. Tu voz tiene un peso especial en la organización.' },
+          'Dirigente':  { headerBg:'#92400e', color:'#f59e0b', badgeBg:'#fffbeb', badgeText:'#78350f', icono:'🏆', nivel:'6 de 6', xpMin:'30.001', xpMax:'∞',     quote:'El verdadero líder no es quien dirige, sino quien inspira y transforma.', nextIcono: null, nextNombre: null, nextXp: null, msg:'Has alcanzado el nivel máximo de SLIM Quest. Tu trayectoria de aprendizaje y dedicación te convierten en uno de los referentes más importantes del Sindicato SLIM N°3.' }
+        };
+
+        var g = GRADOS_INFO[_currentGradoNombre] || GRADOS_INFO['Aspirante'];
+
+        var nextSection = g.nextNombre
+          ? '<div style="background:' + g.badgeBg + ';border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid ' + g.color + '44;">' +
+              '<p style="font-size:10px;font-weight:700;color:' + g.badgeText + ';text-transform:uppercase;letter-spacing:0.5px;margin:0 0 5px;">Próximo nivel</p>' +
+              '<p style="font-size:13px;color:' + g.badgeText + ';margin:0;font-weight:600;">' + g.nextIcono + ' ' + g.nextNombre + ' · desde ' + g.nextXp + ' XP</p>' +
+            '</div>'
+          : '<div style="background:#fef3c7;border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid #fbbf2444;">' +
+              '<p style="font-size:10px;font-weight:700;color:#78350f;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 5px;">Nivel máximo</p>' +
+              '<p style="font-size:13px;color:#78350f;margin:0;font-weight:600;">🏅 Has completado todos los niveles de SLIM Quest</p>' +
+            '</div>';
+
+        var xpLabel = g.nextNombre
+          ? 'Rango XP: ' + g.xpMin + ' – ' + g.xpMax
+          : 'Rango XP: ' + g.xpMin + ' en adelante';
+
+        var modalHTML =
+          '<div id="grado-info-modal" onclick="if(event.target===this)cerrarInfoGrado()" ' +
+            'style="position:fixed;inset:0;background:rgba(15,23,42,0.7);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999;">' +
+            '<div style="background:#fff;width:100%;max-width:360px;border-radius:20px;overflow:hidden;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.3);">' +
+
+              // HEADER
+              '<div style="background:' + g.headerBg + ';padding:28px 20px 22px;text-align:center;flex-shrink:0;">' +
+                '<div style="font-size:52px;line-height:1;margin-bottom:8px;">' + g.icono + '</div>' +
+                '<div style="display:inline-block;background:rgba(255,255,255,0.2);color:#fff;font-size:10px;padding:3px 10px;border-radius:999px;margin-bottom:6px;">Nivel ' + g.nivel + '</div>' +
+                '<h2 style="margin:0 0 2px;font-size:20px;font-weight:700;color:#fff;">' + _currentGradoNombre + '</h2>' +
+                '<p style="margin:0;font-size:11px;color:rgba(255,255,255,0.7);">' + xpLabel + ' XP</p>' +
+              '</div>' +
+
+              // BODY
+              '<div style="padding:20px;overflow-y:auto;flex-grow:1;">' +
+                '<p style="font-size:13px;color:#475569;line-height:1.7;margin-bottom:16px;">' + g.msg + '</p>' +
+
+                // Cita
+                '<div style="border-left:3px solid ' + g.color + ';background:' + g.badgeBg + ';border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px;">' +
+                  '<p style="font-size:12px;font-style:italic;color:' + g.badgeText + ';line-height:1.6;margin:0;">"' + g.quote + '"</p>' +
+                '</div>' +
+
+                nextSection +
+
+                // Botón cerrar
+                '<button onclick="cerrarInfoGrado()" ' +
+                  'style="width:100%;padding:13px;border-radius:12px;background:' + g.headerBg + ';color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;">' +
+                  'Entendido' +
+                '</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+
+        var existente = document.getElementById('grado-info-modal');
+        if (existente) existente.remove();
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+      }
+
+      function cerrarInfoGrado() {
+        var m = document.getElementById('grado-info-modal');
+        if (m) m.remove();
+      }
+
+      // ─── variable de modo secreto ────────────────────────────────────────────────
+      var _quizModoSecreto = false;
+
+      function iniciarQuizSecreto() {
+        _quizModoSecreto = true;
+        switchView('slim-quest-quiz-view');
+
+        // Aplicar tema oscuro/dorado al header del quiz
+        var header = document.querySelector('#slim-quest-quiz-view > div.bg-slate-900');
+        if (header) {
+          header.style.background = 'linear-gradient(135deg,#1e1b4b 0%,#312e81 100%)';
+        }
+        document.getElementById('quiz-progreso-bar').style.background =
+          'linear-gradient(90deg,#f5d060,#a78bfa)';
+
+        document.getElementById('quiz-loader').classList.remove('hidden');
+        document.getElementById('quiz-contenedor').classList.add('hidden');
+
+        // Cambiar el título del header
+        var titulo = document.querySelector('#slim-quest-quiz-view h2');
+        if (titulo) titulo.innerText = '🔐 Nivel Secreto';
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            document.getElementById('quiz-loader').classList.add('hidden');
+            if (!res.success) {
+              if (res.accesoDenegado) {
+                Swal.fire({
+                  icon: 'info',
+                  title: 'Nivel bloqueado',
+                  text: res.message,
+                  confirmButtonColor: '#7c3aed'
+                });
+              } else {
+                showWarning(res.message || 'No hay preguntas disponibles.');
+              }
+              // Restaurar tema normal
+              _quizModoSecreto = false;
+              var hdr = document.querySelector('#slim-quest-quiz-view > div.bg-slate-900');
+              if (hdr) hdr.style.background = '';
+              switchView('slim-quest-view');
+              return;
+            }
+            _quizPreguntas   = res.preguntas;
+            _quizIndice      = 0;
+            _quizCorrectas   = 0;
+            _quizXPAcumulado = 0;
+            mostrarPregunta(0);
+          })
+          .withFailureHandler(function(err) {
+            document.getElementById('quiz-loader').classList.add('hidden');
+            _quizModoSecreto = false;
+            showWarning('Error al cargar el nivel secreto: ' + err.message);
+            switchView('slim-quest-view');
+          })
+          .obtenerPreguntasSecreto(currentRut, 5);
       }
 
       function mostrarPregunta(indice) {
@@ -5112,9 +5436,9 @@ divForm.classList.add('flex');
                 res.logrosNuevos.map(function(l){ return l.icono + ' ' + l.nombre; }).join('<br>');
             }
 
-            var msgBonus = res.bonusRacha
-              ? '<br><br>🔥 <b>Bonus de racha:</b> +50 XP por ' + res.nuevaRacha + ' días seguidos'
-              : '';
+            var msgBonus = res.xpBonoRacha > 0
+            ? '<br><br>🔥 <b>Bonus día ' + res.nuevaRacha + ':</b> +' + res.xpBonoRacha + ' XP extra'
+            : '';
 
             var msgGrado = res.subioGrado
               ? '<br><br>🎉 <b>¡Subiste de grado!</b><br>' + res.gradoAnterior + ' → ' + res.grado.icono + ' ' + res.grado.nombre
@@ -5142,6 +5466,15 @@ divForm.classList.add('flex');
 
       function salirDelQuiz() {
         _quizPreguntas = [];
+        // Restaurar header si estaba en modo secreto
+        if (_quizModoSecreto) {
+          var hdr = document.querySelector('#slim-quest-quiz-view > div.bg-slate-900');
+          if (hdr) hdr.style.background = '';
+          var titulo = document.querySelector('#slim-quest-quiz-view h2');
+          if (titulo) titulo.innerText = 'Quiz Sindical Diario';
+          document.getElementById('quiz-progreso-bar').style.background = '';
+          _quizModoSecreto = false;
+        }
         switchView('slim-quest-view');
       }
 

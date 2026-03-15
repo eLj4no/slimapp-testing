@@ -105,7 +105,8 @@ const CONFIG = {
       ULTIMA_ACTIVIDAD: 7,
       QUIZ_ULTIMO_DIA: 8,
       QUIZZES_COMPLETADOS: 9,
-      ESTADO: 10
+      ESTADO: 10,
+      QUIZZES_PERFECTOS: 11
     },
     BANCO_PREGUNTAS: {
       ID: 0,
@@ -5309,12 +5310,12 @@ function enviarNotificacionCredencial(correo, nombre, estadoNuevo, rut) {
 // ==========================================
 
 const GRADOS_SLIM = [
-  { nombre: "Aspirante",  minXP: 0,    maxXP: 500,   icono: "🌱" },
-  { nombre: "Aprendiz",   minXP: 501,  maxXP: 1500,  icono: "⚙️" },
-  { nombre: "Trabajador", minXP: 1501, maxXP: 3000,  icono: "🔩" },
-  { nombre: "Defensor",   minXP: 3001, maxXP: 5000,  icono: "🛡️" },
-  { nombre: "Negociador", minXP: 5001, maxXP: 8000,  icono: "⚖️" },
-  { nombre: "Dirigente",  minXP: 8001, maxXP: 99999, icono: "🏆" }
+  { nombre: "Aspirante",  minXP: 0,     maxXP: 1500,  icono: "🌱" },
+  { nombre: "Aprendiz",   minXP: 1501,  maxXP: 4500,  icono: "⚙️" },
+  { nombre: "Trabajador", minXP: 4501,  maxXP: 10000, icono: "🔩" },
+  { nombre: "Defensor",   minXP: 10001, maxXP: 18000, icono: "🛡️" },
+  { nombre: "Negociador", minXP: 18001, maxXP: 30000, icono: "⚖️" },
+  { nombre: "Dirigente",  minXP: 30001, maxXP: 999999, icono: "🏆" }
 ];
 
 function calcularGrado_(xp) {
@@ -5416,7 +5417,8 @@ function inicializarSocioGamificacion_(rutLimpio, nombreSocio, estadoSocio) {
       hoy,         // H: ULTIMA_ACTIVIDAD
       "",          // I: QUIZ_ULTIMO_DIA
       0,           // J: QUIZZES_COMPLETADOS
-      estado       // K: ESTADO
+      estado,      // K: ESTADO
+      0            // L: QUIZZES_PERFECTOS
     ]);
 
     Logger.log("✅ Socio inicializado en SLIM Quest: " + rutLimpio + " (" + nombreSocio + ") — " + estado);
@@ -5547,35 +5549,67 @@ function otorgarLogro(rutInput, codigoLogro, nombreLogro, iconoLogro) {
 /**
  * Devuelve el top 10 de socios por XP para el leaderboard mensual.
  */
-function getLeaderboard() {
+function getLeaderboard(rutInput) {
   try {
     const sheet = getSheet('GAMIFICACION', 'GAMIFICACION');
     if (!sheet) return { success: false, message: "Hoja no encontrada." };
 
     const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return { success: true, ranking: [] };
+    if (lastRow < 2) return { success: true, top10: [], miPosicion: null };
 
-    const data = sheet.getRange(2, 1, lastRow - 1, 10).getDisplayValues();
-    const COL = CONFIG.COLUMNAS.GAMIFICACION;
-    const ranking = [];
+    const COL      = CONFIG.COLUMNAS.GAMIFICACION;
+    const data     = sheet.getRange(2, 1, lastRow - 1, 12).getDisplayValues();
+    const rutLimpio = rutInput ? cleanRut(rutInput) : "";
 
-    for (let i = 0; i < data.length; i++) {
-      const xp = parseInt(data[i][COL.XP_TOTAL]) || 0;
-      if (xp > 0) {
-        ranking.push({
-          nombre: data[i][COL.NOMBRE] || "Socio",
-          xp: xp,
-          grado: data[i][COL.GRADO] || "Aspirante",
-          racha: parseInt(data[i][COL.RACHA_ACTUAL]) || 0
-        });
+    // Construir lista filtrando desvinculados
+    const lista = [];
+    for (var i = 0; i < data.length; i++) {
+      var xp     = parseInt(data[i][COL.XP_TOTAL]) || 0;
+      var estado = String(data[i][COL.ESTADO]).toUpperCase().trim();
+      if (estado === "DESVINCULADO") continue;
+      lista.push({
+        rut:    cleanRut(data[i][COL.RUT]),
+        nombre: data[i][COL.NOMBRE] || "Socio",
+        xp:     xp,
+        grado:  calcularGrado_(xp)
+      });
+    }
+
+    // Ordenar de mayor a menor XP
+    lista.sort(function(a, b) { return b.xp - a.xp; });
+
+    // Top 10 con nombre parcial (privacidad)
+    var top10 = lista.slice(0, 10).map(function(s, idx) {
+      var partes  = s.nombre.trim().split(" ");
+      var visible = partes[0] + (partes[1] ? " " + partes[1][0] + "." : "");
+      return {
+        posicion: idx + 1,
+        nombre:   visible,
+        xp:       s.xp,
+        grado:    s.grado,
+        esMio:    (s.rut === rutLimpio)
+      };
+    });
+
+    // Posición real del usuario logueado
+    var miPosicion = null;
+    if (rutLimpio) {
+      var miIdx = lista.findIndex(function(s) { return s.rut === rutLimpio; });
+      if (miIdx >= 0) {
+        miPosicion = {
+          posicion: miIdx + 1,
+          xp:       lista[miIdx].xp,
+          grado:    lista[miIdx].grado
+        };
       }
     }
 
-    ranking.sort((a, b) => b.xp - a.xp);
-    return { success: true, ranking: ranking.slice(0, 10) };
+    Logger.log("🏆 Leaderboard | top10: " + top10.length + " | RUT: " + rutLimpio);
+    return { success: true, top10: top10, miPosicion: miPosicion };
+
   } catch (e) {
     Logger.log("❌ Error en getLeaderboard: " + e.toString());
-    return { success: false, message: "Error: " + e.toString() };
+    return { success: false, message: e.toString() };
   }
 }
 
@@ -5668,7 +5702,8 @@ function sincronizarSociosGamificacion() {
           hoy,         // H: ULTIMA_ACTIVIDAD
           "",          // I: QUIZ_ULTIMO_DIA
           0,           // J: QUIZZES_COMPLETADOS
-          estadoNorm   // K: ESTADO
+          estadoNorm,  // K: ESTADO
+          0            // L: QUIZZES_PERFECTOS
         ]);
         creados++;
       }
@@ -5779,6 +5814,8 @@ function obtenerPreguntasQuiz(rutInput, cantidad) {
         fuente:      data[i][COL.FUENTE]
       };
 
+      // NIVEL DIRIGENTE es exclusivo del quiz secreto — no va al quiz normal
+      if (nivel === "DIRIGENTE") continue;
       if (porNivel[nivel] !== undefined) porNivel[nivel].push(pregunta);
     }
 
@@ -5838,21 +5875,19 @@ function obtenerPreguntasQuiz(rutInput, cantidad) {
 }
 
 /**
- * Registra el resultado del quiz diario y otorga XP al socio.
- * @param {string} rutInput       - RUT del socio
- * @param {number} correctas      - Número de respuestas correctas (0-5)
- * @param {number} xpGanado       - XP total calculado en el frontend
+ * Registra el resultado del quiz diario, otorga XP y evalúa logros.
+ * Sistema de rachas por niveles + 16 logros totales.
  */
 function registrarResultadoQuiz(rutInput, correctas, xpGanado) {
   try {
     const rutLimpio = cleanRut(rutInput);
     if (!rutLimpio) return { success: false, message: "RUT inválido." };
 
-    const sheet    = getSheet('GAMIFICACION', 'GAMIFICACION');
-    const lastRow  = sheet.getLastRow();
+    const sheet   = getSheet('GAMIFICACION', 'GAMIFICACION');
+    const lastRow = sheet.getLastRow();
     if (lastRow < 2) return { success: false, message: "Socio no inicializado." };
 
-    const data = sheet.getRange(2, 1, lastRow - 1, 11).getDisplayValues();
+    const data = sheet.getRange(2, 1, lastRow - 1, 12).getDisplayValues();
     const COL  = CONFIG.COLUMNAS.GAMIFICACION;
     const hoy  = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy");
     const ahora = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy HH:mm");
@@ -5860,74 +5895,96 @@ function registrarResultadoQuiz(rutInput, correctas, xpGanado) {
     for (let i = 0; i < data.length; i++) {
       if (cleanRut(data[i][COL.RUT]) !== rutLimpio) continue;
 
-      const filaReal       = i + 2;
-      const quizUltimoDia  = String(data[i][COL.QUIZ_ULTIMO_DIA] || "").trim();
+      const filaReal          = i + 2;
+      const quizUltimoDia     = String(data[i][COL.QUIZ_ULTIMO_DIA] || "").trim();
 
-      // Validación anti-trampa: no permitir jugar dos veces el mismo día
+      // ── Anti-trampa: no jugar dos veces el mismo día ─────────────────────
       if (quizUltimoDia === hoy) {
         return { success: false, message: "Ya completaste el quiz de hoy. ¡Vuelve mañana!" };
       }
 
-      // ── Calcular racha ───────────────────────────────────────────────────
+      // ── Calcular nueva racha ──────────────────────────────────────────────
       const rachaActual = parseInt(data[i][COL.RACHA_ACTUAL]) || 0;
       const rachaMax    = parseInt(data[i][COL.RACHA_MAX])    || 0;
-      let nuevaRacha    = rachaActual;
-
-      // Verificar si jugó ayer para mantener racha
-      const ayer = new Date();
+      const ayer        = new Date();
       ayer.setDate(ayer.getDate() - 1);
-      const ayerStr = Utilities.formatDate(ayer, "America/Santiago", "dd/MM/yyyy");
-      nuevaRacha = (quizUltimoDia === ayerStr) ? rachaActual + 1 : 1;
+      const ayerStr    = Utilities.formatDate(ayer, "America/Santiago", "dd/MM/yyyy");
+      const nuevaRacha = (quizUltimoDia === ayerStr) ? rachaActual + 1 : 1;
       const nuevaRachaMax = Math.max(nuevaRacha, rachaMax);
 
-      // ── Bonus de racha (cada 7 días consecutivos = +50 XP extra) ────────
-      let xpFinal   = xpGanado;
-      let bonusRacha = false;
-      if (nuevaRacha % 7 === 0) {
-        xpFinal   += 50;
-        bonusRacha = true;
+      // ── Sistema de bonos de racha por niveles ─────────────────────────────
+      // Tabla: { día_exacto → XP_bonus }
+      const BONOS_RACHA = { 3: 20, 7: 50, 14: 80, 21: 100, 30: 160, 60: 280, 100: 500 };
+      let xpFinal    = xpGanado;
+      let xpBonoRacha = 0;
+      if (BONOS_RACHA[nuevaRacha] !== undefined) {
+        xpBonoRacha = BONOS_RACHA[nuevaRacha];
+        xpFinal += xpBonoRacha;
+      } else if (nuevaRacha > 100 && nuevaRacha % 7 === 0) {
+        // Después de día 100: bonus de +100 XP cada 7 días
+        xpBonoRacha = 100;
+        xpFinal += xpBonoRacha;
       }
 
-      // ── Actualizar fila ──────────────────────────────────────────────────
-      const xpActual  = parseInt(data[i][COL.XP_TOTAL]) || 0;
-      const xpNuevo   = xpActual + xpFinal;
-      const gradoNuevo = calcularGrado_(xpNuevo);
-      const quizzesAnt = parseInt(data[i][COL.QUIZZES_COMPLETADOS]) || 0;
+      // ── Actualizar XP, grado y contadores ────────────────────────────────
+      const xpActual          = parseInt(data[i][COL.XP_TOTAL])            || 0;
+      const xpNuevo           = xpActual + xpFinal;
+      const gradoNuevo        = calcularGrado_(xpNuevo);
+      const quizzesAnt        = parseInt(data[i][COL.QUIZZES_COMPLETADOS]) || 0;
+      const quizzesPerfAnt    = parseInt(data[i][COL.QUIZZES_PERFECTOS])   || 0;
+      const quizzesTotalNuevo = quizzesAnt + 1;
+      const quizesPerfNuevo   = correctas === 5 ? quizzesPerfAnt + 1 : quizzesPerfAnt;
 
       sheet.getRange(filaReal, COL.XP_TOTAL + 1).setValue(xpNuevo);
       sheet.getRange(filaReal, COL.GRADO + 1).setValue(gradoNuevo.nombre);
       sheet.getRange(filaReal, COL.RACHA_ACTUAL + 1).setValue(nuevaRacha);
       sheet.getRange(filaReal, COL.RACHA_MAX + 1).setValue(nuevaRachaMax);
       sheet.getRange(filaReal, COL.QUIZ_ULTIMO_DIA + 1).setValue(hoy);
-      sheet.getRange(filaReal, COL.QUIZZES_COMPLETADOS + 1).setValue(quizzesAnt + 1);
+      sheet.getRange(filaReal, COL.QUIZZES_COMPLETADOS + 1).setValue(quizzesTotalNuevo);
       sheet.getRange(filaReal, COL.ULTIMA_ACTIVIDAD + 1).setValue(ahora);
+      sheet.getRange(filaReal, COL.QUIZZES_PERFECTOS + 1).setValue(quizesPerfNuevo);
 
-      // ── Logros automáticos ───────────────────────────────────────────────
+      // ── Evaluación completa de logros ─────────────────────────────────────
       const logrosNuevos = [];
-      if (correctas === 5) {
-        const r = otorgarLogro(rutInput, "QUIZ_PERFECTO", "Quiz Perfecto", "🎯");
-        if (r.nuevo) logrosNuevos.push(r.logro);
-      }
-      if (quizzesAnt + 1 === 1) {
-        const r = otorgarLogro(rutInput, "PRIMER_QUIZ", "Primer Quiz", "🎮");
-        if (r.nuevo) logrosNuevos.push(r.logro);
-      }
-      if (quizzesAnt + 1 === 10) {
-        const r = otorgarLogro(rutInput, "10_QUIZZES", "10 Quizzes", "⭐");
-        if (r.nuevo) logrosNuevos.push(r.logro);
-      }
-      if (nuevaRacha === 7) {
-        const r = otorgarLogro(rutInput, "RACHA_7", "Racha de 7 días", "🔥");
-        if (r.nuevo) logrosNuevos.push(r.logro);
+      function evalLogro(codigo, nombre, icono) {
+        var r = otorgarLogro(rutInput, codigo, nombre, icono);
+        if (r.success && r.nuevo) logrosNuevos.push(r.logro);
       }
 
-      Logger.log("✅ Quiz registrado: " + rutLimpio + " | Correctas: " + correctas + "/5 | XP: +" + xpFinal + " | Racha: " + nuevaRacha);
+      // — Por quizzes completados —
+      if (quizzesTotalNuevo === 1)   evalLogro("PRIMER_QUIZ",      "Primer Quiz",          "🎮");
+      if (quizzesTotalNuevo === 10)  evalLogro("10_QUIZZES",       "10 Quizzes",           "⭐");
+      if (quizzesTotalNuevo === 25)  evalLogro("25_QUIZZES",       "Estudiante Sindical",  "🎓");
+      if (quizzesTotalNuevo === 50)  evalLogro("50_QUIZZES",       "Comprometido",         "📖");
+      if (quizzesTotalNuevo === 100) evalLogro("100_QUIZZES",      "Maestro del Sindicato","🏛️");
+
+      // — Por puntaje perfecto —
+      if (correctas === 5)           evalLogro("QUIZ_PERFECTO",    "Quiz Perfecto",        "🎯");
+      if (quizesPerfNuevo === 3)     evalLogro("3_PERFECTOS",      "Imparable",            "💯");
+      if (quizesPerfNuevo === 10)    evalLogro("10_PERFECTOS",     "Sin Errores",          "🌟");
+
+      // — Por rachas —
+      if (nuevaRacha === 3)   evalLogro("RACHA_3",   "Primeros pasos",    "✨");
+      if (nuevaRacha === 7)   evalLogro("RACHA_7",   "Racha de 7 días",   "🔥");
+      if (nuevaRacha === 14)  evalLogro("RACHA_14",  "Racha de 2 semanas","🔥🔥");
+      if (nuevaRacha === 30)  evalLogro("RACHA_30",  "Racha de 30 días",  "📅");
+      if (nuevaRacha === 60)  evalLogro("RACHA_60",  "Racha de 60 días",  "🗓️");
+      if (nuevaRacha === 100) evalLogro("RACHA_100", "Centenario",        "💎");
+
+      Logger.log("✅ Quiz OK: " + rutLimpio + " | " + correctas + "/5 correctas | +" + xpFinal + " XP (bono racha: +" + xpBonoRacha + ") | Racha: " + nuevaRacha + " | Perfectos: " + quizesPerfNuevo);
+
+      // ── Enviar correo de nivel si subió de grado ──────────────────────────
+      if (data[i][COL.GRADO] !== gradoNuevo.nombre) {
+        const correoSocio = obtenerUsuarioPorRut(rutInput).correo || '';
+        enviarCorreoNivel(correoSocio, data[i][COL.NOMBRE], gradoNuevo.nombre, xpNuevo);
+      }
 
       return {
         success: true,
         correctas: correctas,
         xpGanado: xpFinal,
-        bonusRacha: bonusRacha,
+        xpBase: xpGanado,
+        xpBonoRacha: xpBonoRacha,
         nuevaRacha: nuevaRacha,
         xpTotal: xpNuevo,
         grado: gradoNuevo,
@@ -5941,6 +5998,215 @@ function registrarResultadoQuiz(rutInput, correctas, xpGanado) {
 
   } catch (e) {
     Logger.log("❌ Error en registrarResultadoQuiz: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+// ==========================================
+// MÓDULO: NOTIFICACIÓN DE NIVEL — SLIM QUEST
+// ==========================================
+function enviarCorreoNivel(correo, nombre, gradoNuevo, xpTotal) {
+  if (!correo || !correo.includes('@')) return;
+
+  const CONFIG_GRADO = {
+    'Aspirante':  { headerBg:'#15803d', color:'#22c55e', badgeBg:'#dcfce7', badgeText:'#14532d', icono:'🌱', nivel:'1/6', quote:'Cada gran viaje comienza con el primer paso. ¡Has dado el tuyo!', nextNivel:'⚙️ Aprendiz', nextXp:'1.501 XP' },
+    'Aprendiz':   { headerBg:'#1d4ed8', color:'#3b82f6', badgeBg:'#dbeafe', badgeText:'#1e3a8a', icono:'⚙️', nivel:'2/6', quote:'El conocimiento es la herramienta más poderosa del movimiento sindical.', nextNivel:'🔩 Trabajador', nextXp:'4.501 XP' },
+    'Trabajador': { headerBg:'#c2410c', color:'#f97316', badgeBg:'#ffedd5', badgeText:'#7c2d12', icono:'🔩', nivel:'3/6', quote:'El trabajo organizado mueve montañas. Tú eres la fuerza del sindicato.', nextNivel:'🛡️ Defensor', nextXp:'10.001 XP' },
+    'Defensor':   { headerBg:'#6d28d9', color:'#8b5cf6', badgeBg:'#ede9fe', badgeText:'#4c1d95', icono:'🛡️', nivel:'4/6', quote:'Defender los derechos colectivos es el corazón del sindicalismo.', nextNivel:'⚖️ Negociador', nextXp:'18.001 XP' },
+    'Negociador': { headerBg:'#b45309', color:'#d97706', badgeBg:'#fef3c7', badgeText:'#78350f', icono:'⚖️', nivel:'5/6', quote:'La negociación efectiva nace del conocimiento profundo y la preparación incansable.', nextNivel:'🏆 Dirigente', nextXp:'30.001 XP' },
+    'Dirigente':  { headerBg:'#92400e', color:'#f59e0b', badgeBg:'#fffbeb', badgeText:'#78350f', icono:'🏆', nivel:'6/6', quote:'El verdadero líder no es quien dirige, sino quien inspira y transforma.', nextNivel: null, nextXp: null }
+  };
+
+  const cfg = CONFIG_GRADO[gradoNuevo];
+  if (!cfg) return;
+
+  const xpFmt = Number(xpTotal).toLocaleString('es-CL');
+  const nextSection = cfg.nextNivel
+    ? `<div style="background:${cfg.badgeBg};border-radius:10px;padding:14px 16px;margin-bottom:20px;border:1px solid ${cfg.color}33;">
+         <p style="font-size:11px;font-weight:700;color:${cfg.badgeText};text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px;">Próximo nivel</p>
+         <p style="font-size:14px;color:${cfg.badgeText};margin:0;font-weight:600;">${cfg.nextNivel} — desde ${cfg.nextXp}</p>
+       </div>`
+    : `<div style="background:#fef3c7;border-radius:10px;padding:14px 16px;margin-bottom:20px;border:1px solid #fbbf2433;">
+         <p style="font-size:11px;font-weight:700;color:#78350f;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px;">Nivel máximo</p>
+         <p style="font-size:14px;color:#78350f;margin:0;font-weight:600;">🏅 Has completado todos los niveles de SLIM Quest</p>
+       </div>`;
+
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:20px;background:#f1f5f9;font-family:Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+    <div style="background:${cfg.headerBg};padding:32px 24px;text-align:center;">
+      <div style="font-size:56px;line-height:1;margin-bottom:10px;">${cfg.icono}</div>
+      <div style="display:inline-block;background:rgba(255,255,255,0.2);color:#fff;font-size:11px;padding:3px 10px;border-radius:999px;margin-bottom:8px;">Nuevo nivel alcanzado</div>
+      <h1 style="margin:0 0 4px;font-size:22px;font-weight:600;color:#fff;">¡Subiste a ${gradoNuevo}!</h1>
+      <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.75);">Sindicato SLIM N°3 · SLIM Quest</p>
+    </div>
+    <div style="padding:24px;">
+      <p style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:12px;">Hola, ${nombre}</p>
+      <p style="font-size:13px;color:#64748b;line-height:1.7;margin-bottom:20px;">Tu constancia y dedicación en SLIM Quest te han llevado a un nuevo nivel. Sigue aprendiendo y creciendo junto al Sindicato SLIM N°3.</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+        <tr>
+          <td style="width:33%;text-align:center;background:#f8fafc;border-radius:10px;padding:12px 6px;">
+            <div style="font-size:18px;font-weight:700;color:${cfg.color};">${xpFmt}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px;">XP acumulados</div>
+          </td>
+          <td style="width:4%;"></td>
+          <td style="width:30%;text-align:center;background:#f8fafc;border-radius:10px;padding:12px 6px;">
+            <div style="font-size:15px;font-weight:700;color:${cfg.color};">Nivel ${cfg.nivel}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px;">Tu posición</div>
+          </td>
+          <td style="width:4%;"></td>
+          <td style="width:29%;text-align:center;background:#f8fafc;border-radius:10px;padding:12px 6px;">
+            <div style="font-size:24px;">${cfg.icono}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px;">${gradoNuevo}</div>
+          </td>
+        </tr>
+      </table>
+      <div style="background:${cfg.badgeBg};border-left:4px solid ${cfg.color};border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:20px;">
+        <p style="font-size:13px;font-style:italic;color:${cfg.badgeText};line-height:1.6;margin:0;">"${cfg.quote}"</p>
+      </div>
+      ${nextSection}
+      <div style="background:${cfg.headerBg};border-radius:10px;padding:14px;text-align:center;margin-bottom:8px;">
+        <p style="margin:0;color:#fff;font-size:14px;font-weight:600;">Continuar en SLIM Quest →</p>
+      </div>
+    </div>
+    <div style="padding:16px 24px;border-top:1px solid #f1f5f9;text-align:center;">
+      <p style="font-size:11px;color:#94a3b8;margin:2px 0;">Mensaje automático generado por SLIMAPP</p>
+      <p style="font-size:11px;color:#cbd5e1;margin:2px 0;">Sindicato SLIM N°3 · No responder a este correo</p>
+    </div>
+  </div>
+</body></html>`;
+
+  try {
+    MailApp.sendEmail({
+      to: correo,
+      subject: `${cfg.icono} ¡Subiste a ${gradoNuevo} en SLIM Quest! — Sindicato SLIM N°3`,
+      htmlBody: html,
+      name: 'Sindicato SLIM N°3'
+    });
+    Logger.log('📧 Correo de nivel enviado a ' + correo + ' — Grado: ' + gradoNuevo);
+  } catch(e) {
+    Logger.log('⚠️ Error enviando correo de nivel: ' + e.toString());
+  }
+}
+
+/**
+ * FUNCIÓN BATCH — Ejecutar UNA SOLA VEZ desde el editor de Apps Script.
+ * Actualiza el XP de todas las preguntas del BANCO_PREGUNTAS:
+ *   BASICO      → 15 XP  (antes 20)
+ *   INTERMEDIO  → 25 XP  (antes 30)
+ *   AVANZADO    → 40 XP  (sin cambio)
+ */
+function actualizarXpBancoPreguntas() {
+  try {
+    const sheet   = getSheet('GAMIFICACION', 'BANCO_PREGUNTAS');
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) { Logger.log("⚠️ Banco vacío."); return; }
+
+    const COL     = CONFIG.COLUMNAS.BANCO_PREGUNTAS;
+    const data    = sheet.getRange(2, 1, lastRow - 1, 13).getDisplayValues();
+
+    const XP_MAP  = { BASICO: 15, INTERMEDIO: 25, AVANZADO: 40, DIRIGENTE: 50 };
+    let actualizadas = 0;
+    let omitidas     = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      const nivel    = String(data[i][COL.NIVEL]).toUpperCase().trim();
+      const xpNuevo  = XP_MAP[nivel];
+
+      if (!xpNuevo) { omitidas++; continue; }
+
+      const xpActual = parseInt(data[i][COL.XP]) || 0;
+      if (xpActual === xpNuevo) { omitidas++; continue; }
+
+      sheet.getRange(i + 2, COL.XP + 1).setValue(xpNuevo);
+      actualizadas++;
+      Logger.log("✏️ Fila " + (i + 2) + " | " + nivel + " | " + xpActual + " → " + xpNuevo + " XP");
+    }
+
+    Logger.log("══════════════════════════════════");
+    Logger.log("📊 actualizarXpBancoPreguntas");
+    Logger.log("   ✅ Actualizadas: " + actualizadas);
+    Logger.log("   ⏭️  Sin cambio:   " + omitidas);
+    Logger.log("══════════════════════════════════");
+
+  } catch (e) {
+    Logger.log("❌ Error: " + e.toString());
+  }
+}
+
+/**
+ * Obtiene preguntas del NIVEL SECRETO DIRIGENTE.
+ * Solo accesible para socios con grado = "Dirigente".
+ * @param {string} rutInput - RUT del socio
+ * @param {number} cantidad - Preguntas a devolver (default: 5)
+ */
+function obtenerPreguntasSecreto(rutInput, cantidad) {
+  try {
+    cantidad = cantidad || 5;
+
+    // ── Verificar que el socio sea Dirigente ─────────────────────────────────
+    const progreso = getProgresoSocio(rutInput);
+    if (!progreso.success || progreso.grado.nombre !== "Dirigente") {
+      return {
+        success: false,
+        accesoDenegado: true,
+        message: "El Nivel Secreto es exclusivo para socios con grado Dirigente. " +
+                 "Sigue acumulando XP en el quiz diario para alcanzarlo."
+      };
+    }
+
+    const sheet = getSheet('GAMIFICACION', 'BANCO_PREGUNTAS');
+    if (!sheet) return { success: false, message: "Banco de preguntas no disponible." };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, message: "No hay preguntas en el nivel secreto." };
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 13).getDisplayValues();
+    const COL  = CONFIG.COLUMNAS.BANCO_PREGUNTAS;
+    const pool = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const activa = String(data[i][COL.ACTIVA]).toUpperCase();
+      if (activa !== "TRUE" && activa !== "VERDADERO" && activa !== "1") continue;
+      const nivel = String(data[i][COL.NIVEL]).toUpperCase().trim();
+      if (nivel !== "DIRIGENTE") continue;  // Solo preguntas secretas
+
+      pool.push({
+        id:          data[i][COL.ID],
+        categoria:   data[i][COL.CATEGORIA],
+        nivel:       nivel,
+        pregunta:    data[i][COL.PREGUNTA],
+        opciones: {
+          A: data[i][COL.OPCION_A],
+          B: data[i][COL.OPCION_B],
+          C: data[i][COL.OPCION_C],
+          D: data[i][COL.OPCION_D]
+        },
+        respuesta:   data[i][COL.RESPUESTA].toUpperCase().trim(),
+        explicacion: data[i][COL.EXPLICACION],
+        xp:          parseInt(data[i][COL.XP]) || 50,
+        fuente:      data[i][COL.FUENTE]
+      });
+    }
+
+    if (pool.length === 0) {
+      return { success: false, message: "No hay preguntas del nivel secreto cargadas aún." };
+    }
+
+    // Mezclar y tomar `cantidad`
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    Logger.log("🔐 Quiz secreto generado para " + rutInput + " | Preguntas: " + Math.min(cantidad, pool.length));
+    return {
+      success: true,
+      preguntas: pool.slice(0, cantidad),
+      modoSecreto: true
+    };
+
+  } catch (e) {
+    Logger.log("❌ Error en obtenerPreguntasSecreto: " + e.toString());
     return { success: false, message: "Error: " + e.toString() };
   }
 }
