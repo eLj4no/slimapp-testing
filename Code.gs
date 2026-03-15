@@ -5973,6 +5973,12 @@ function registrarResultadoQuiz(rutInput, correctas, xpGanado) {
 
       Logger.log("✅ Quiz OK: " + rutLimpio + " | " + correctas + "/5 correctas | +" + xpFinal + " XP (bono racha: +" + xpBonoRacha + ") | Racha: " + nuevaRacha + " | Perfectos: " + quizesPerfNuevo);
 
+      // ── Enviar correo de nivel si subió de grado ──────────────────────────
+      if (data[i][COL.GRADO] !== gradoNuevo.nombre) {
+        const correoSocio = obtenerUsuarioPorRut(rutInput).correo || '';
+        enviarCorreoNivel(correoSocio, data[i][COL.NOMBRE], gradoNuevo.nombre, xpNuevo);
+      }
+
       return {
         success: true,
         correctas: correctas,
@@ -5993,6 +5999,92 @@ function registrarResultadoQuiz(rutInput, correctas, xpGanado) {
   } catch (e) {
     Logger.log("❌ Error en registrarResultadoQuiz: " + e.toString());
     return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+// ==========================================
+// MÓDULO: NOTIFICACIÓN DE NIVEL — SLIM QUEST
+// ==========================================
+function enviarCorreoNivel(correo, nombre, gradoNuevo, xpTotal) {
+  if (!correo || !correo.includes('@')) return;
+
+  const CONFIG_GRADO = {
+    'Aspirante':  { headerBg:'#15803d', color:'#22c55e', badgeBg:'#dcfce7', badgeText:'#14532d', icono:'🌱', nivel:'1/6', quote:'Cada gran viaje comienza con el primer paso. ¡Has dado el tuyo!', nextNivel:'⚙️ Aprendiz', nextXp:'1.501 XP' },
+    'Aprendiz':   { headerBg:'#1d4ed8', color:'#3b82f6', badgeBg:'#dbeafe', badgeText:'#1e3a8a', icono:'⚙️', nivel:'2/6', quote:'El conocimiento es la herramienta más poderosa del movimiento sindical.', nextNivel:'🔩 Trabajador', nextXp:'4.501 XP' },
+    'Trabajador': { headerBg:'#c2410c', color:'#f97316', badgeBg:'#ffedd5', badgeText:'#7c2d12', icono:'🔩', nivel:'3/6', quote:'El trabajo organizado mueve montañas. Tú eres la fuerza del sindicato.', nextNivel:'🛡️ Defensor', nextXp:'10.001 XP' },
+    'Defensor':   { headerBg:'#6d28d9', color:'#8b5cf6', badgeBg:'#ede9fe', badgeText:'#4c1d95', icono:'🛡️', nivel:'4/6', quote:'Defender los derechos colectivos es el corazón del sindicalismo.', nextNivel:'⚖️ Negociador', nextXp:'18.001 XP' },
+    'Negociador': { headerBg:'#b45309', color:'#d97706', badgeBg:'#fef3c7', badgeText:'#78350f', icono:'⚖️', nivel:'5/6', quote:'La negociación efectiva nace del conocimiento profundo y la preparación incansable.', nextNivel:'🏆 Dirigente', nextXp:'30.001 XP' },
+    'Dirigente':  { headerBg:'#92400e', color:'#f59e0b', badgeBg:'#fffbeb', badgeText:'#78350f', icono:'🏆', nivel:'6/6', quote:'El verdadero líder no es quien dirige, sino quien inspira y transforma.', nextNivel: null, nextXp: null }
+  };
+
+  const cfg = CONFIG_GRADO[gradoNuevo];
+  if (!cfg) return;
+
+  const xpFmt = Number(xpTotal).toLocaleString('es-CL');
+  const nextSection = cfg.nextNivel
+    ? `<div style="background:${cfg.badgeBg};border-radius:10px;padding:14px 16px;margin-bottom:20px;border:1px solid ${cfg.color}33;">
+         <p style="font-size:11px;font-weight:700;color:${cfg.badgeText};text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px;">Próximo nivel</p>
+         <p style="font-size:14px;color:${cfg.badgeText};margin:0;font-weight:600;">${cfg.nextNivel} — desde ${cfg.nextXp}</p>
+       </div>`
+    : `<div style="background:#fef3c7;border-radius:10px;padding:14px 16px;margin-bottom:20px;border:1px solid #fbbf2433;">
+         <p style="font-size:11px;font-weight:700;color:#78350f;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px;">Nivel máximo</p>
+         <p style="font-size:14px;color:#78350f;margin:0;font-weight:600;">🏅 Has completado todos los niveles de SLIM Quest</p>
+       </div>`;
+
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:20px;background:#f1f5f9;font-family:Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+    <div style="background:${cfg.headerBg};padding:32px 24px;text-align:center;">
+      <div style="font-size:56px;line-height:1;margin-bottom:10px;">${cfg.icono}</div>
+      <div style="display:inline-block;background:rgba(255,255,255,0.2);color:#fff;font-size:11px;padding:3px 10px;border-radius:999px;margin-bottom:8px;">Nuevo nivel alcanzado</div>
+      <h1 style="margin:0 0 4px;font-size:22px;font-weight:600;color:#fff;">¡Subiste a ${gradoNuevo}!</h1>
+      <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.75);">Sindicato SLIM N°3 · SLIM Quest</p>
+    </div>
+    <div style="padding:24px;">
+      <p style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:12px;">Hola, ${nombre}</p>
+      <p style="font-size:13px;color:#64748b;line-height:1.7;margin-bottom:20px;">Tu constancia y dedicación en SLIM Quest te han llevado a un nuevo nivel. Sigue aprendiendo y creciendo junto al Sindicato SLIM N°3.</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+        <tr>
+          <td style="width:33%;text-align:center;background:#f8fafc;border-radius:10px;padding:12px 6px;">
+            <div style="font-size:18px;font-weight:700;color:${cfg.color};">${xpFmt}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px;">XP acumulados</div>
+          </td>
+          <td style="width:4%;"></td>
+          <td style="width:30%;text-align:center;background:#f8fafc;border-radius:10px;padding:12px 6px;">
+            <div style="font-size:15px;font-weight:700;color:${cfg.color};">Nivel ${cfg.nivel}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px;">Tu posición</div>
+          </td>
+          <td style="width:4%;"></td>
+          <td style="width:29%;text-align:center;background:#f8fafc;border-radius:10px;padding:12px 6px;">
+            <div style="font-size:24px;">${cfg.icono}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px;">${gradoNuevo}</div>
+          </td>
+        </tr>
+      </table>
+      <div style="background:${cfg.badgeBg};border-left:4px solid ${cfg.color};border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:20px;">
+        <p style="font-size:13px;font-style:italic;color:${cfg.badgeText};line-height:1.6;margin:0;">"${cfg.quote}"</p>
+      </div>
+      ${nextSection}
+      <div style="background:${cfg.headerBg};border-radius:10px;padding:14px;text-align:center;margin-bottom:8px;">
+        <p style="margin:0;color:#fff;font-size:14px;font-weight:600;">Continuar en SLIM Quest →</p>
+      </div>
+    </div>
+    <div style="padding:16px 24px;border-top:1px solid #f1f5f9;text-align:center;">
+      <p style="font-size:11px;color:#94a3b8;margin:2px 0;">Mensaje automático generado por SLIMAPP</p>
+      <p style="font-size:11px;color:#cbd5e1;margin:2px 0;">Sindicato SLIM N°3 · No responder a este correo</p>
+    </div>
+  </div>
+</body></html>`;
+
+  try {
+    MailApp.sendEmail({
+      to: correo,
+      subject: `${cfg.icono} ¡Subiste a ${gradoNuevo} en SLIM Quest! — Sindicato SLIM N°3`,
+      htmlBody: html,
+      name: 'Sindicato SLIM N°3'
+    });
+    Logger.log('📧 Correo de nivel enviado a ' + correo + ' — Grado: ' + gradoNuevo);
+  } catch(e) {
+    Logger.log('⚠️ Error enviando correo de nivel: ' + e.toString());
   }
 }
 
