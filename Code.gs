@@ -5549,35 +5549,67 @@ function otorgarLogro(rutInput, codigoLogro, nombreLogro, iconoLogro) {
 /**
  * Devuelve el top 10 de socios por XP para el leaderboard mensual.
  */
-function getLeaderboard() {
+function getLeaderboard(rutInput) {
   try {
     const sheet = getSheet('GAMIFICACION', 'GAMIFICACION');
     if (!sheet) return { success: false, message: "Hoja no encontrada." };
 
     const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return { success: true, ranking: [] };
+    if (lastRow < 2) return { success: true, top10: [], miPosicion: null };
 
-    const data = sheet.getRange(2, 1, lastRow - 1, 10).getDisplayValues();
-    const COL = CONFIG.COLUMNAS.GAMIFICACION;
-    const ranking = [];
+    const COL      = CONFIG.COLUMNAS.GAMIFICACION;
+    const data     = sheet.getRange(2, 1, lastRow - 1, 12).getDisplayValues();
+    const rutLimpio = rutInput ? cleanRut(rutInput) : "";
 
-    for (let i = 0; i < data.length; i++) {
-      const xp = parseInt(data[i][COL.XP_TOTAL]) || 0;
-      if (xp > 0) {
-        ranking.push({
-          nombre: data[i][COL.NOMBRE] || "Socio",
-          xp: xp,
-          grado: data[i][COL.GRADO] || "Aspirante",
-          racha: parseInt(data[i][COL.RACHA_ACTUAL]) || 0
-        });
+    // Construir lista filtrando desvinculados
+    const lista = [];
+    for (var i = 0; i < data.length; i++) {
+      var xp     = parseInt(data[i][COL.XP_TOTAL]) || 0;
+      var estado = String(data[i][COL.ESTADO]).toUpperCase().trim();
+      if (estado === "DESVINCULADO") continue;
+      lista.push({
+        rut:    cleanRut(data[i][COL.RUT]),
+        nombre: data[i][COL.NOMBRE] || "Socio",
+        xp:     xp,
+        grado:  calcularGrado_(xp)
+      });
+    }
+
+    // Ordenar de mayor a menor XP
+    lista.sort(function(a, b) { return b.xp - a.xp; });
+
+    // Top 10 con nombre parcial (privacidad)
+    var top10 = lista.slice(0, 10).map(function(s, idx) {
+      var partes  = s.nombre.trim().split(" ");
+      var visible = partes[0] + (partes[1] ? " " + partes[1][0] + "." : "");
+      return {
+        posicion: idx + 1,
+        nombre:   visible,
+        xp:       s.xp,
+        grado:    s.grado,
+        esMio:    (s.rut === rutLimpio)
+      };
+    });
+
+    // Posición real del usuario logueado
+    var miPosicion = null;
+    if (rutLimpio) {
+      var miIdx = lista.findIndex(function(s) { return s.rut === rutLimpio; });
+      if (miIdx >= 0) {
+        miPosicion = {
+          posicion: miIdx + 1,
+          xp:       lista[miIdx].xp,
+          grado:    lista[miIdx].grado
+        };
       }
     }
 
-    ranking.sort((a, b) => b.xp - a.xp);
-    return { success: true, ranking: ranking.slice(0, 10) };
+    Logger.log("🏆 Leaderboard | top10: " + top10.length + " | RUT: " + rutLimpio);
+    return { success: true, top10: top10, miPosicion: miPosicion };
+
   } catch (e) {
     Logger.log("❌ Error en getLeaderboard: " + e.toString());
-    return { success: false, message: "Error: " + e.toString() };
+    return { success: false, message: e.toString() };
   }
 }
 
