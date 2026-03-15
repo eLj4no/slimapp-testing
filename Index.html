@@ -1645,7 +1645,7 @@
             <h2 class="text-lg font-bold">SLIM Quest</h2>
             <p class="text-xs text-white/60">Aprende · Participa · Progresa</p>
           </div>
-          <div id="sq-grado-badge" class="z-10 text-xs font-bold bg-purple-600/80 px-3 py-1 rounded-full"></div>
+          <div id="sq-grado-badge" onclick="mostrarInfoGrado()" class="z-10 text-xs font-bold bg-purple-600/80 px-3 py-1 rounded-full cursor-pointer active:scale-95 transition hover:bg-purple-500/90"></div>
         </div>
 
         <!-- Loader -->
@@ -2948,7 +2948,7 @@
         }
         // Validar si el usuario es TESTING (acceso restringido a Mis Datos y SLIM Quest)
         if (currentUserRole && currentUserRole.toUpperCase() === 'TESTING' &&
-            !['dashboard-view', 'profile-view', 'slim-quest-view', 'slim-quest-quiz-view', 'logout-view', 'login-view'].includes(viewId)) {
+          !['dashboard-view', 'profile-view', 'slim-quest-view', 'slim-quest-quiz-view', 'slim-quest-leaderboard-view', 'logout-view', 'login-view'].includes(viewId)) {
           showWarning("Esta sección no está disponible para tu perfil de acceso.");
           return;
         }
@@ -4983,6 +4983,7 @@ divForm.classList.add('flex');
               : 100;
 
             document.getElementById('sq-grado-badge').innerText = (grado.icono || '') + ' ' + (grado.nombre || 'Aspirante');
+            _currentGradoNombre = grado.nombre || 'Aspirante';
             document.getElementById('sq-grado-icon').innerText = grado.icono || '🌱';
             document.getElementById('sq-grado-nombre').innerText = grado.nombre || 'Aspirante';
             document.getElementById('sq-xp-label').innerText = res.xp + ' XP';
@@ -5037,6 +5038,7 @@ divForm.classList.add('flex');
       }
 
       // ─── Estado del quiz en memoria ──────────────────────────────────────────────
+      var _currentGradoNombre = 'Aspirante';
       var _quizPreguntas   = [];
       var _quizIndice      = 0;
       var _quizCorrectas   = 0;
@@ -5156,6 +5158,78 @@ divForm.classList.add('flex');
             switchView('slim-quest-view');
           })
           .obtenerPreguntasQuiz(currentRut, 5);
+      }
+
+      // ==========================================
+      // MODAL DE INFORMACIÓN DE NIVEL — SLIM QUEST
+      // ==========================================
+      function mostrarInfoGrado() {
+        var GRADOS_INFO = {
+          'Aspirante':  { headerBg:'#15803d', color:'#22c55e', badgeBg:'#dcfce7', badgeText:'#14532d', icono:'🌱', nivel:'1 de 6', xpMin:'0', xpMax:'1.500', quote:'Cada gran viaje comienza con el primer paso. ¡Has dado el tuyo!', nextIcono:'⚙️', nextNombre:'Aprendiz', nextXp:'1.501', msg:'Tu participación en SLIM Quest ha comenzado. Cada quiz diario te acerca más a convertirte en un referente sindical de la organización.' },
+          'Aprendiz':   { headerBg:'#1d4ed8', color:'#3b82f6', badgeBg:'#dbeafe', badgeText:'#1e3a8a', icono:'⚙️', nivel:'2 de 6', xpMin:'1.501', xpMax:'4.500', quote:'El conocimiento es la herramienta más poderosa del movimiento sindical.', nextIcono:'🔩', nextNombre:'Trabajador', nextXp:'4.501', msg:'Tu constancia está dando frutos. Ya dominas los fundamentos sindicales y estás construyendo una base sólida de conocimiento.' },
+          'Trabajador': { headerBg:'#c2410c', color:'#f97316', badgeBg:'#ffedd5', badgeText:'#7c2d12', icono:'🔩', nivel:'3 de 6', xpMin:'4.501', xpMax:'10.000', quote:'El trabajo organizado mueve montañas. Tú eres la fuerza del sindicato.', nextIcono:'🛡️', nextNombre:'Defensor', nextXp:'10.001', msg:'Tu dedicación refleja los valores fundamentales de la organización. Eres un ejemplo de compromiso para tus compañeros.' },
+          'Defensor':   { headerBg:'#6d28d9', color:'#8b5cf6', badgeBg:'#ede9fe', badgeText:'#4c1d95', icono:'🛡️', nivel:'4 de 6', xpMin:'10.001', xpMax:'18.000', quote:'Defender los derechos colectivos es el corazón del sindicalismo.', nextIcono:'⚖️', nextNombre:'Negociador', nextXp:'18.001', msg:'Has demostrado un compromiso profundo con los valores y derechos de la organización. Eres un pilar fundamental del Sindicato SLIM N°3.' },
+          'Negociador': { headerBg:'#b45309', color:'#d97706', badgeBg:'#fef3c7', badgeText:'#78350f', icono:'⚖️', nivel:'5 de 6', xpMin:'18.001', xpMax:'30.000', quote:'La negociación efectiva nace del conocimiento profundo y la preparación incansable.', nextIcono:'🏆', nextNombre:'Dirigente', nextXp:'30.001', msg:'Tu nivel de preparación y conocimiento te posiciona entre los socios más destacados. Tu voz tiene un peso especial en la organización.' },
+          'Dirigente':  { headerBg:'#92400e', color:'#f59e0b', badgeBg:'#fffbeb', badgeText:'#78350f', icono:'🏆', nivel:'6 de 6', xpMin:'30.001', xpMax:'∞',     quote:'El verdadero líder no es quien dirige, sino quien inspira y transforma.', nextIcono: null, nextNombre: null, nextXp: null, msg:'Has alcanzado el nivel máximo de SLIM Quest. Tu trayectoria de aprendizaje y dedicación te convierten en uno de los referentes más importantes del Sindicato SLIM N°3.' }
+        };
+
+        var g = GRADOS_INFO[_currentGradoNombre] || GRADOS_INFO['Aspirante'];
+
+        var nextSection = g.nextNombre
+          ? '<div style="background:' + g.badgeBg + ';border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid ' + g.color + '44;">' +
+              '<p style="font-size:10px;font-weight:700;color:' + g.badgeText + ';text-transform:uppercase;letter-spacing:0.5px;margin:0 0 5px;">Próximo nivel</p>' +
+              '<p style="font-size:13px;color:' + g.badgeText + ';margin:0;font-weight:600;">' + g.nextIcono + ' ' + g.nextNombre + ' · desde ' + g.nextXp + ' XP</p>' +
+            '</div>'
+          : '<div style="background:#fef3c7;border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid #fbbf2444;">' +
+              '<p style="font-size:10px;font-weight:700;color:#78350f;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 5px;">Nivel máximo</p>' +
+              '<p style="font-size:13px;color:#78350f;margin:0;font-weight:600;">🏅 Has completado todos los niveles de SLIM Quest</p>' +
+            '</div>';
+
+        var xpLabel = g.nextNombre
+          ? 'Rango XP: ' + g.xpMin + ' – ' + g.xpMax
+          : 'Rango XP: ' + g.xpMin + ' en adelante';
+
+        var modalHTML =
+          '<div id="grado-info-modal" onclick="if(event.target===this)cerrarInfoGrado()" ' +
+            'style="position:fixed;inset:0;background:rgba(15,23,42,0.7);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999;">' +
+            '<div style="background:#fff;width:100%;max-width:360px;border-radius:20px;overflow:hidden;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.3);">' +
+
+              // HEADER
+              '<div style="background:' + g.headerBg + ';padding:28px 20px 22px;text-align:center;flex-shrink:0;">' +
+                '<div style="font-size:52px;line-height:1;margin-bottom:8px;">' + g.icono + '</div>' +
+                '<div style="display:inline-block;background:rgba(255,255,255,0.2);color:#fff;font-size:10px;padding:3px 10px;border-radius:999px;margin-bottom:6px;">Nivel ' + g.nivel + '</div>' +
+                '<h2 style="margin:0 0 2px;font-size:20px;font-weight:700;color:#fff;">' + _currentGradoNombre + '</h2>' +
+                '<p style="margin:0;font-size:11px;color:rgba(255,255,255,0.7);">' + xpLabel + ' XP</p>' +
+              '</div>' +
+
+              // BODY
+              '<div style="padding:20px;overflow-y:auto;flex-grow:1;">' +
+                '<p style="font-size:13px;color:#475569;line-height:1.7;margin-bottom:16px;">' + g.msg + '</p>' +
+
+                // Cita
+                '<div style="border-left:3px solid ' + g.color + ';background:' + g.badgeBg + ';border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px;">' +
+                  '<p style="font-size:12px;font-style:italic;color:' + g.badgeText + ';line-height:1.6;margin:0;">"' + g.quote + '"</p>' +
+                '</div>' +
+
+                nextSection +
+
+                // Botón cerrar
+                '<button onclick="cerrarInfoGrado()" ' +
+                  'style="width:100%;padding:13px;border-radius:12px;background:' + g.headerBg + ';color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;">' +
+                  'Entendido' +
+                '</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+
+        var existente = document.getElementById('grado-info-modal');
+        if (existente) existente.remove();
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+      }
+
+      function cerrarInfoGrado() {
+        var m = document.getElementById('grado-info-modal');
+        if (m) m.remove();
       }
 
       // ─── variable de modo secreto ────────────────────────────────────────────────
