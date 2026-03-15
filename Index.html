@@ -1664,6 +1664,21 @@
               <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full font-medium">Pronto</span>
             </div>
 
+            <!-- Nivel Secreto Dirigente -->
+            <div id="sq-nivel-secreto" class="hidden rounded-xl p-4 flex items-center gap-4 cursor-pointer active:scale-[0.98] transition"
+                style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);border:1.5px solid #a78bfa;"
+                onclick="iniciarQuizSecreto()">
+              <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                  style="background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.4);">
+                <span class="material-icons-round text-2xl" style="color:#f5d060;">auto_awesome</span>
+              </div>
+              <div class="flex-1">
+                <div class="font-bold text-sm" style="color:#f5d060;">Nivel Secreto</div>
+                <div class="text-xs mt-0.5" style="color:#a78bfa;">Teoría Dirigencial · El Capital y Economía Política</div>
+              </div>
+              <div class="text-xs font-bold px-2 py-1 rounded-full" style="background:rgba(245,208,96,0.15);color:#f5d060;border:1px solid rgba(245,208,96,0.3);">🔐</div>
+            </div>
+
           </div>
 
           <!-- Logros -->
@@ -4870,6 +4885,14 @@ divForm.classList.add('flex');
               return;
             }
 
+            // ── Mostrar nivel secreto solo si el grado es Dirigente ──────────────
+            var tarjetaSecreta = document.getElementById('sq-nivel-secreto');
+            if (res.grado && res.grado.nombre === 'Dirigente') {
+              tarjetaSecreta.classList.remove('hidden');
+            } else {
+              tarjetaSecreta.classList.add('hidden');
+            }
+
             // Poblar interfaz con datos reales
             const grado = res.grado || {};
             const sigGrado = res.gradoSiguiente;
@@ -4964,6 +4987,64 @@ divForm.classList.add('flex');
             switchView('slim-quest-view');
           })
           .obtenerPreguntasQuiz(currentRut, 5);
+      }
+
+      // ─── variable de modo secreto ────────────────────────────────────────────────
+      var _quizModoSecreto = false;
+
+      function iniciarQuizSecreto() {
+        _quizModoSecreto = true;
+        switchView('slim-quest-quiz-view');
+
+        // Aplicar tema oscuro/dorado al header del quiz
+        var header = document.querySelector('#slim-quest-quiz-view > div.bg-slate-900');
+        if (header) {
+          header.style.background = 'linear-gradient(135deg,#1e1b4b 0%,#312e81 100%)';
+        }
+        document.getElementById('quiz-progreso-bar').style.background =
+          'linear-gradient(90deg,#f5d060,#a78bfa)';
+
+        document.getElementById('quiz-loader').classList.remove('hidden');
+        document.getElementById('quiz-contenedor').classList.add('hidden');
+
+        // Cambiar el título del header
+        var titulo = document.querySelector('#slim-quest-quiz-view h2');
+        if (titulo) titulo.innerText = '🔐 Nivel Secreto';
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            document.getElementById('quiz-loader').classList.add('hidden');
+            if (!res.success) {
+              if (res.accesoDenegado) {
+                Swal.fire({
+                  icon: 'info',
+                  title: 'Nivel bloqueado',
+                  text: res.message,
+                  confirmButtonColor: '#7c3aed'
+                });
+              } else {
+                showWarning(res.message || 'No hay preguntas disponibles.');
+              }
+              // Restaurar tema normal
+              _quizModoSecreto = false;
+              var hdr = document.querySelector('#slim-quest-quiz-view > div.bg-slate-900');
+              if (hdr) hdr.style.background = '';
+              switchView('slim-quest-view');
+              return;
+            }
+            _quizPreguntas   = res.preguntas;
+            _quizIndice      = 0;
+            _quizCorrectas   = 0;
+            _quizXPAcumulado = 0;
+            mostrarPregunta(0);
+          })
+          .withFailureHandler(function(err) {
+            document.getElementById('quiz-loader').classList.add('hidden');
+            _quizModoSecreto = false;
+            showWarning('Error al cargar el nivel secreto: ' + err.message);
+            switchView('slim-quest-view');
+          })
+          .obtenerPreguntasSecreto(currentRut, 5);
       }
 
       function mostrarPregunta(indice) {
@@ -5112,9 +5193,9 @@ divForm.classList.add('flex');
                 res.logrosNuevos.map(function(l){ return l.icono + ' ' + l.nombre; }).join('<br>');
             }
 
-            var msgBonus = res.bonusRacha
-              ? '<br><br>🔥 <b>Bonus de racha:</b> +50 XP por ' + res.nuevaRacha + ' días seguidos'
-              : '';
+            var msgBonus = res.xpBonoRacha > 0
+            ? '<br><br>🔥 <b>Bonus día ' + res.nuevaRacha + ':</b> +' + res.xpBonoRacha + ' XP extra'
+            : '';
 
             var msgGrado = res.subioGrado
               ? '<br><br>🎉 <b>¡Subiste de grado!</b><br>' + res.gradoAnterior + ' → ' + res.grado.icono + ' ' + res.grado.nombre
@@ -5142,6 +5223,15 @@ divForm.classList.add('flex');
 
       function salirDelQuiz() {
         _quizPreguntas = [];
+        // Restaurar header si estaba en modo secreto
+        if (_quizModoSecreto) {
+          var hdr = document.querySelector('#slim-quest-quiz-view > div.bg-slate-900');
+          if (hdr) hdr.style.background = '';
+          var titulo = document.querySelector('#slim-quest-quiz-view h2');
+          if (titulo) titulo.innerText = 'Quiz Sindical Diario';
+          document.getElementById('quiz-progreso-bar').style.background = '';
+          _quizModoSecreto = false;
+        }
         switchView('slim-quest-view');
       }
 
