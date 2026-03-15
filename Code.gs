@@ -105,7 +105,8 @@ const CONFIG = {
       ULTIMA_ACTIVIDAD: 7,
       QUIZ_ULTIMO_DIA: 8,
       QUIZZES_COMPLETADOS: 9,
-      ESTADO: 10
+      ESTADO: 10,
+      QUIZZES_PERFECTOS: 11
     },
     BANCO_PREGUNTAS: {
       ID: 0,
@@ -5309,12 +5310,12 @@ function enviarNotificacionCredencial(correo, nombre, estadoNuevo, rut) {
 // ==========================================
 
 const GRADOS_SLIM = [
-  { nombre: "Aspirante",  minXP: 0,    maxXP: 500,   icono: "🌱" },
-  { nombre: "Aprendiz",   minXP: 501,  maxXP: 1500,  icono: "⚙️" },
-  { nombre: "Trabajador", minXP: 1501, maxXP: 3000,  icono: "🔩" },
-  { nombre: "Defensor",   minXP: 3001, maxXP: 5000,  icono: "🛡️" },
-  { nombre: "Negociador", minXP: 5001, maxXP: 8000,  icono: "⚖️" },
-  { nombre: "Dirigente",  minXP: 8001, maxXP: 99999, icono: "🏆" }
+  { nombre: "Aspirante",  minXP: 0,     maxXP: 1500,  icono: "🌱" },
+  { nombre: "Aprendiz",   minXP: 1501,  maxXP: 4500,  icono: "⚙️" },
+  { nombre: "Trabajador", minXP: 4501,  maxXP: 10000, icono: "🔩" },
+  { nombre: "Defensor",   minXP: 10001, maxXP: 18000, icono: "🛡️" },
+  { nombre: "Negociador", minXP: 18001, maxXP: 30000, icono: "⚖️" },
+  { nombre: "Dirigente",  minXP: 30001, maxXP: 999999, icono: "🏆" }
 ];
 
 function calcularGrado_(xp) {
@@ -5416,7 +5417,8 @@ function inicializarSocioGamificacion_(rutLimpio, nombreSocio, estadoSocio) {
       hoy,         // H: ULTIMA_ACTIVIDAD
       "",          // I: QUIZ_ULTIMO_DIA
       0,           // J: QUIZZES_COMPLETADOS
-      estado       // K: ESTADO
+      estado,      // K: ESTADO
+      0            // L: QUIZZES_PERFECTOS
     ]);
 
     Logger.log("✅ Socio inicializado en SLIM Quest: " + rutLimpio + " (" + nombreSocio + ") — " + estado);
@@ -5668,7 +5670,8 @@ function sincronizarSociosGamificacion() {
           hoy,         // H: ULTIMA_ACTIVIDAD
           "",          // I: QUIZ_ULTIMO_DIA
           0,           // J: QUIZZES_COMPLETADOS
-          estadoNorm   // K: ESTADO
+          estadoNorm,  // K: ESTADO
+          0            // L: QUIZZES_PERFECTOS
         ]);
         creados++;
       }
@@ -5779,6 +5782,8 @@ function obtenerPreguntasQuiz(rutInput, cantidad) {
         fuente:      data[i][COL.FUENTE]
       };
 
+      // NIVEL DIRIGENTE es exclusivo del quiz secreto — no va al quiz normal
+      if (nivel === "DIRIGENTE") continue;
       if (porNivel[nivel] !== undefined) porNivel[nivel].push(pregunta);
     }
 
@@ -5838,21 +5843,19 @@ function obtenerPreguntasQuiz(rutInput, cantidad) {
 }
 
 /**
- * Registra el resultado del quiz diario y otorga XP al socio.
- * @param {string} rutInput       - RUT del socio
- * @param {number} correctas      - Número de respuestas correctas (0-5)
- * @param {number} xpGanado       - XP total calculado en el frontend
+ * Registra el resultado del quiz diario, otorga XP y evalúa logros.
+ * Sistema de rachas por niveles + 16 logros totales.
  */
 function registrarResultadoQuiz(rutInput, correctas, xpGanado) {
   try {
     const rutLimpio = cleanRut(rutInput);
     if (!rutLimpio) return { success: false, message: "RUT inválido." };
 
-    const sheet    = getSheet('GAMIFICACION', 'GAMIFICACION');
-    const lastRow  = sheet.getLastRow();
+    const sheet   = getSheet('GAMIFICACION', 'GAMIFICACION');
+    const lastRow = sheet.getLastRow();
     if (lastRow < 2) return { success: false, message: "Socio no inicializado." };
 
-    const data = sheet.getRange(2, 1, lastRow - 1, 11).getDisplayValues();
+    const data = sheet.getRange(2, 1, lastRow - 1, 12).getDisplayValues();
     const COL  = CONFIG.COLUMNAS.GAMIFICACION;
     const hoy  = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy");
     const ahora = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy HH:mm");
@@ -5860,74 +5863,90 @@ function registrarResultadoQuiz(rutInput, correctas, xpGanado) {
     for (let i = 0; i < data.length; i++) {
       if (cleanRut(data[i][COL.RUT]) !== rutLimpio) continue;
 
-      const filaReal       = i + 2;
-      const quizUltimoDia  = String(data[i][COL.QUIZ_ULTIMO_DIA] || "").trim();
+      const filaReal          = i + 2;
+      const quizUltimoDia     = String(data[i][COL.QUIZ_ULTIMO_DIA] || "").trim();
 
-      // Validación anti-trampa: no permitir jugar dos veces el mismo día
+      // ── Anti-trampa: no jugar dos veces el mismo día ─────────────────────
       if (quizUltimoDia === hoy) {
         return { success: false, message: "Ya completaste el quiz de hoy. ¡Vuelve mañana!" };
       }
 
-      // ── Calcular racha ───────────────────────────────────────────────────
+      // ── Calcular nueva racha ──────────────────────────────────────────────
       const rachaActual = parseInt(data[i][COL.RACHA_ACTUAL]) || 0;
       const rachaMax    = parseInt(data[i][COL.RACHA_MAX])    || 0;
-      let nuevaRacha    = rachaActual;
-
-      // Verificar si jugó ayer para mantener racha
-      const ayer = new Date();
+      const ayer        = new Date();
       ayer.setDate(ayer.getDate() - 1);
-      const ayerStr = Utilities.formatDate(ayer, "America/Santiago", "dd/MM/yyyy");
-      nuevaRacha = (quizUltimoDia === ayerStr) ? rachaActual + 1 : 1;
+      const ayerStr    = Utilities.formatDate(ayer, "America/Santiago", "dd/MM/yyyy");
+      const nuevaRacha = (quizUltimoDia === ayerStr) ? rachaActual + 1 : 1;
       const nuevaRachaMax = Math.max(nuevaRacha, rachaMax);
 
-      // ── Bonus de racha (cada 7 días consecutivos = +50 XP extra) ────────
-      let xpFinal   = xpGanado;
-      let bonusRacha = false;
-      if (nuevaRacha % 7 === 0) {
-        xpFinal   += 50;
-        bonusRacha = true;
+      // ── Sistema de bonos de racha por niveles ─────────────────────────────
+      // Tabla: { día_exacto → XP_bonus }
+      const BONOS_RACHA = { 3: 20, 7: 50, 14: 80, 21: 100, 30: 160, 60: 280, 100: 500 };
+      let xpFinal    = xpGanado;
+      let xpBonoRacha = 0;
+      if (BONOS_RACHA[nuevaRacha] !== undefined) {
+        xpBonoRacha = BONOS_RACHA[nuevaRacha];
+        xpFinal += xpBonoRacha;
+      } else if (nuevaRacha > 100 && nuevaRacha % 7 === 0) {
+        // Después de día 100: bonus de +100 XP cada 7 días
+        xpBonoRacha = 100;
+        xpFinal += xpBonoRacha;
       }
 
-      // ── Actualizar fila ──────────────────────────────────────────────────
-      const xpActual  = parseInt(data[i][COL.XP_TOTAL]) || 0;
-      const xpNuevo   = xpActual + xpFinal;
-      const gradoNuevo = calcularGrado_(xpNuevo);
-      const quizzesAnt = parseInt(data[i][COL.QUIZZES_COMPLETADOS]) || 0;
+      // ── Actualizar XP, grado y contadores ────────────────────────────────
+      const xpActual          = parseInt(data[i][COL.XP_TOTAL])            || 0;
+      const xpNuevo           = xpActual + xpFinal;
+      const gradoNuevo        = calcularGrado_(xpNuevo);
+      const quizzesAnt        = parseInt(data[i][COL.QUIZZES_COMPLETADOS]) || 0;
+      const quizzesPerfAnt    = parseInt(data[i][COL.QUIZZES_PERFECTOS])   || 0;
+      const quizzesTotalNuevo = quizzesAnt + 1;
+      const quizesPerfNuevo   = correctas === 5 ? quizzesPerfAnt + 1 : quizzesPerfAnt;
 
       sheet.getRange(filaReal, COL.XP_TOTAL + 1).setValue(xpNuevo);
       sheet.getRange(filaReal, COL.GRADO + 1).setValue(gradoNuevo.nombre);
       sheet.getRange(filaReal, COL.RACHA_ACTUAL + 1).setValue(nuevaRacha);
       sheet.getRange(filaReal, COL.RACHA_MAX + 1).setValue(nuevaRachaMax);
       sheet.getRange(filaReal, COL.QUIZ_ULTIMO_DIA + 1).setValue(hoy);
-      sheet.getRange(filaReal, COL.QUIZZES_COMPLETADOS + 1).setValue(quizzesAnt + 1);
+      sheet.getRange(filaReal, COL.QUIZZES_COMPLETADOS + 1).setValue(quizzesTotalNuevo);
       sheet.getRange(filaReal, COL.ULTIMA_ACTIVIDAD + 1).setValue(ahora);
+      sheet.getRange(filaReal, COL.QUIZZES_PERFECTOS + 1).setValue(quizesPerfNuevo);
 
-      // ── Logros automáticos ───────────────────────────────────────────────
+      // ── Evaluación completa de logros ─────────────────────────────────────
       const logrosNuevos = [];
-      if (correctas === 5) {
-        const r = otorgarLogro(rutInput, "QUIZ_PERFECTO", "Quiz Perfecto", "🎯");
-        if (r.nuevo) logrosNuevos.push(r.logro);
-      }
-      if (quizzesAnt + 1 === 1) {
-        const r = otorgarLogro(rutInput, "PRIMER_QUIZ", "Primer Quiz", "🎮");
-        if (r.nuevo) logrosNuevos.push(r.logro);
-      }
-      if (quizzesAnt + 1 === 10) {
-        const r = otorgarLogro(rutInput, "10_QUIZZES", "10 Quizzes", "⭐");
-        if (r.nuevo) logrosNuevos.push(r.logro);
-      }
-      if (nuevaRacha === 7) {
-        const r = otorgarLogro(rutInput, "RACHA_7", "Racha de 7 días", "🔥");
-        if (r.nuevo) logrosNuevos.push(r.logro);
+      function evalLogro(codigo, nombre, icono) {
+        var r = otorgarLogro(rutInput, codigo, nombre, icono);
+        if (r.success && r.nuevo) logrosNuevos.push(r.logro);
       }
 
-      Logger.log("✅ Quiz registrado: " + rutLimpio + " | Correctas: " + correctas + "/5 | XP: +" + xpFinal + " | Racha: " + nuevaRacha);
+      // — Por quizzes completados —
+      if (quizzesTotalNuevo === 1)   evalLogro("PRIMER_QUIZ",      "Primer Quiz",          "🎮");
+      if (quizzesTotalNuevo === 10)  evalLogro("10_QUIZZES",       "10 Quizzes",           "⭐");
+      if (quizzesTotalNuevo === 25)  evalLogro("25_QUIZZES",       "Estudiante Sindical",  "🎓");
+      if (quizzesTotalNuevo === 50)  evalLogro("50_QUIZZES",       "Comprometido",         "📖");
+      if (quizzesTotalNuevo === 100) evalLogro("100_QUIZZES",      "Maestro del Sindicato","🏛️");
+
+      // — Por puntaje perfecto —
+      if (correctas === 5)           evalLogro("QUIZ_PERFECTO",    "Quiz Perfecto",        "🎯");
+      if (quizesPerfNuevo === 3)     evalLogro("3_PERFECTOS",      "Imparable",            "💯");
+      if (quizesPerfNuevo === 10)    evalLogro("10_PERFECTOS",     "Sin Errores",          "🌟");
+
+      // — Por rachas —
+      if (nuevaRacha === 3)   evalLogro("RACHA_3",   "Primeros pasos",    "✨");
+      if (nuevaRacha === 7)   evalLogro("RACHA_7",   "Racha de 7 días",   "🔥");
+      if (nuevaRacha === 14)  evalLogro("RACHA_14",  "Racha de 2 semanas","🔥🔥");
+      if (nuevaRacha === 30)  evalLogro("RACHA_30",  "Racha de 30 días",  "📅");
+      if (nuevaRacha === 60)  evalLogro("RACHA_60",  "Racha de 60 días",  "🗓️");
+      if (nuevaRacha === 100) evalLogro("RACHA_100", "Centenario",        "💎");
+
+      Logger.log("✅ Quiz OK: " + rutLimpio + " | " + correctas + "/5 correctas | +" + xpFinal + " XP (bono racha: +" + xpBonoRacha + ") | Racha: " + nuevaRacha + " | Perfectos: " + quizesPerfNuevo);
 
       return {
         success: true,
         correctas: correctas,
         xpGanado: xpFinal,
-        bonusRacha: bonusRacha,
+        xpBase: xpGanado,
+        xpBonoRacha: xpBonoRacha,
         nuevaRacha: nuevaRacha,
         xpTotal: xpNuevo,
         grado: gradoNuevo,
@@ -5941,6 +5960,129 @@ function registrarResultadoQuiz(rutInput, correctas, xpGanado) {
 
   } catch (e) {
     Logger.log("❌ Error en registrarResultadoQuiz: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+/**
+ * FUNCIÓN BATCH — Ejecutar UNA SOLA VEZ desde el editor de Apps Script.
+ * Actualiza el XP de todas las preguntas del BANCO_PREGUNTAS:
+ *   BASICO      → 15 XP  (antes 20)
+ *   INTERMEDIO  → 25 XP  (antes 30)
+ *   AVANZADO    → 40 XP  (sin cambio)
+ */
+function actualizarXpBancoPreguntas() {
+  try {
+    const sheet   = getSheet('GAMIFICACION', 'BANCO_PREGUNTAS');
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) { Logger.log("⚠️ Banco vacío."); return; }
+
+    const COL     = CONFIG.COLUMNAS.BANCO_PREGUNTAS;
+    const data    = sheet.getRange(2, 1, lastRow - 1, 13).getDisplayValues();
+
+    const XP_MAP  = { BASICO: 15, INTERMEDIO: 25, AVANZADO: 40, DIRIGENTE: 50 };
+    let actualizadas = 0;
+    let omitidas     = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      const nivel    = String(data[i][COL.NIVEL]).toUpperCase().trim();
+      const xpNuevo  = XP_MAP[nivel];
+
+      if (!xpNuevo) { omitidas++; continue; }
+
+      const xpActual = parseInt(data[i][COL.XP]) || 0;
+      if (xpActual === xpNuevo) { omitidas++; continue; }
+
+      sheet.getRange(i + 2, COL.XP + 1).setValue(xpNuevo);
+      actualizadas++;
+      Logger.log("✏️ Fila " + (i + 2) + " | " + nivel + " | " + xpActual + " → " + xpNuevo + " XP");
+    }
+
+    Logger.log("══════════════════════════════════");
+    Logger.log("📊 actualizarXpBancoPreguntas");
+    Logger.log("   ✅ Actualizadas: " + actualizadas);
+    Logger.log("   ⏭️  Sin cambio:   " + omitidas);
+    Logger.log("══════════════════════════════════");
+
+  } catch (e) {
+    Logger.log("❌ Error: " + e.toString());
+  }
+}
+
+/**
+ * Obtiene preguntas del NIVEL SECRETO DIRIGENTE.
+ * Solo accesible para socios con grado = "Dirigente".
+ * @param {string} rutInput - RUT del socio
+ * @param {number} cantidad - Preguntas a devolver (default: 5)
+ */
+function obtenerPreguntasSecreto(rutInput, cantidad) {
+  try {
+    cantidad = cantidad || 5;
+
+    // ── Verificar que el socio sea Dirigente ─────────────────────────────────
+    const progreso = getProgresoSocio(rutInput);
+    if (!progreso.success || progreso.grado.nombre !== "Dirigente") {
+      return {
+        success: false,
+        accesoDenegado: true,
+        message: "El Nivel Secreto es exclusivo para socios con grado Dirigente. " +
+                 "Sigue acumulando XP en el quiz diario para alcanzarlo."
+      };
+    }
+
+    const sheet = getSheet('GAMIFICACION', 'BANCO_PREGUNTAS');
+    if (!sheet) return { success: false, message: "Banco de preguntas no disponible." };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, message: "No hay preguntas en el nivel secreto." };
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 13).getDisplayValues();
+    const COL  = CONFIG.COLUMNAS.BANCO_PREGUNTAS;
+    const pool = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const activa = String(data[i][COL.ACTIVA]).toUpperCase();
+      if (activa !== "TRUE" && activa !== "VERDADERO" && activa !== "1") continue;
+      const nivel = String(data[i][COL.NIVEL]).toUpperCase().trim();
+      if (nivel !== "DIRIGENTE") continue;  // Solo preguntas secretas
+
+      pool.push({
+        id:          data[i][COL.ID],
+        categoria:   data[i][COL.CATEGORIA],
+        nivel:       nivel,
+        pregunta:    data[i][COL.PREGUNTA],
+        opciones: {
+          A: data[i][COL.OPCION_A],
+          B: data[i][COL.OPCION_B],
+          C: data[i][COL.OPCION_C],
+          D: data[i][COL.OPCION_D]
+        },
+        respuesta:   data[i][COL.RESPUESTA].toUpperCase().trim(),
+        explicacion: data[i][COL.EXPLICACION],
+        xp:          parseInt(data[i][COL.XP]) || 50,
+        fuente:      data[i][COL.FUENTE]
+      });
+    }
+
+    if (pool.length === 0) {
+      return { success: false, message: "No hay preguntas del nivel secreto cargadas aún." };
+    }
+
+    // Mezclar y tomar `cantidad`
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    Logger.log("🔐 Quiz secreto generado para " + rutInput + " | Preguntas: " + Math.min(cantidad, pool.length));
+    return {
+      success: true,
+      preguntas: pool.slice(0, cantidad),
+      modoSecreto: true
+    };
+
+  } catch (e) {
+    Logger.log("❌ Error en obtenerPreguntasSecreto: " + e.toString());
     return { success: false, message: "Error: " + e.toString() };
   }
 }
