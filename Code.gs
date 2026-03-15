@@ -42,7 +42,8 @@ const CONFIG = {
     PRESTAMOS: "1h-_sJD4rOCuMjlfSouP7a6gfoodHyzI4MOBRUyOW5XU",
     PERMISOS_MEDICOS: "1VYfm7cOgL3mVfVoI8DubIm8WG2srzQw9a6DtIEs3UMM",
     CREDENCIALES: "1HVyPxdYKuvIybeOCAPwAJaVHwlxEuOik4YW0XOXBE5o",
-    ASISTENCIA: "1SRQ8Mlc6bBdb0mitAfn4I-EUAS4BOrZRbqS9YAmg3Sk"
+    ASISTENCIA: "1SRQ8Mlc6bBdb0mitAfn4I-EUAS4BOrZRbqS9YAmg3Sk",
+    GAMIFICACION: "1SHDIhGv6XOc30Epm4vdusp3QGVD-pWzhIwzeD6iqbXQ"
   },
   HOJAS: {
     USUARIOS: "BD_SLIMAPP",
@@ -55,7 +56,9 @@ const CONFIG = {
     CREDENCIALES: "IMPRESION",
     HISTORIAL_CREDENCIALES: "HISTORIAL_CREDENCIALES",
     ASISTENCIA: "BD_ASISTENCIA",
-    PUNTOS_CONTROL: "PUNTOS_CONTROL"
+    PUNTOS_CONTROL: "PUNTOS_CONTROL",
+    GAMIFICACION: "BD_GAMIFICACION",
+    BANCO_PREGUNTAS: "BANCO_PREGUNTAS"
   },
   CARPETAS: {
     JUSTIFICACIONES: "1UD9hQz1FuacSb3QYrahRl7IfvlpKn8v6",
@@ -90,6 +93,34 @@ const CONFIG = {
       TIPO_CUENTA: 18,
       NUMERO_CUENTA: 19,
       ESTADO_NEG_COLECT: 20
+    },
+    GAMIFICACION: {
+      RUT: 0,
+      NOMBRE: 1,
+      XP_TOTAL: 2,
+      GRADO: 3,
+      LOGROS: 4,
+      RACHA_ACTUAL: 5,
+      RACHA_MAX: 6,
+      ULTIMA_ACTIVIDAD: 7,
+      QUIZ_ULTIMO_DIA: 8,
+      QUIZZES_COMPLETADOS: 9,
+      ESTADO: 10
+    },
+    BANCO_PREGUNTAS: {
+      ID: 0,
+      CATEGORIA: 1,
+      NIVEL: 2,
+      PREGUNTA: 3,
+      OPCION_A: 4,
+      OPCION_B: 5,
+      OPCION_C: 6,
+      OPCION_D: 7,
+      RESPUESTA: 8,
+      EXPLICACION: 9,
+      XP: 10,
+      ACTIVA: 11,
+      FUENTE: 12
     },
     JUSTIFICACIONES: {
       ID: 0,
@@ -5271,4 +5302,645 @@ function enviarNotificacionCredencial(correo, nombre, estadoNuevo, rut) {
     htmlBody: htmlBody,
     name: "Sindicato SLIM N°3"
   });
+}
+
+// ==========================================
+// MÓDULO: GAMIFICACIÓN — SLIM QUEST
+// ==========================================
+
+const GRADOS_SLIM = [
+  { nombre: "Aspirante",  minXP: 0,    maxXP: 500,   icono: "🌱" },
+  { nombre: "Aprendiz",   minXP: 501,  maxXP: 1500,  icono: "⚙️" },
+  { nombre: "Trabajador", minXP: 1501, maxXP: 3000,  icono: "🔩" },
+  { nombre: "Defensor",   minXP: 3001, maxXP: 5000,  icono: "🛡️" },
+  { nombre: "Negociador", minXP: 5001, maxXP: 8000,  icono: "⚖️" },
+  { nombre: "Dirigente",  minXP: 8001, maxXP: 99999, icono: "🏆" }
+];
+
+function calcularGrado_(xp) {
+  for (let i = GRADOS_SLIM.length - 1; i >= 0; i--) {
+    if (xp >= GRADOS_SLIM[i].minXP) return GRADOS_SLIM[i];
+  }
+  return GRADOS_SLIM[0];
+}
+
+/**
+ * Obtiene el progreso completo de un socio en SLIM Quest.
+ * Si el socio no tiene registro aún, lo crea automáticamente.
+ */
+function getProgresoSocio(rutInput) {
+  try {
+    const rutLimpio = cleanRut(rutInput);
+    if (!rutLimpio) return { success: false, message: "RUT inválido." };
+
+    const sheet = getSheet('GAMIFICACION', 'GAMIFICACION');
+    if (!sheet) return { success: false, message: "Módulo de gamificación no configurado." };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow >= 2) {
+      const data = sheet.getRange(2, 1, lastRow - 1, 11).getDisplayValues();
+      const COL = CONFIG.COLUMNAS.GAMIFICACION;
+
+      for (let i = 0; i < data.length; i++) {
+        if (cleanRut(data[i][COL.RUT]) === rutLimpio) {
+          const estado = String(data[i][COL.ESTADO] || "ACTIVO").toUpperCase();
+
+          // Socio desvinculado: puede ver su historial pero no puede jugar
+          if (estado === "DESVINCULADO") {
+            return {
+              success: false,
+              desvinculado: true,
+              message: "Tu participación en SLIM Quest está suspendida porque tu estado en el sindicato es DESVINCULADO. Tu historial de XP y logros queda guardado.",
+              xp: parseInt(data[i][COL.XP_TOTAL]) || 0,
+              grado: data[i][COL.GRADO] || "Aspirante"
+            };
+          }
+
+          const xp = parseInt(data[i][COL.XP_TOTAL]) || 0;
+          const grado = calcularGrado_(xp);
+          const gradoSiguiente = GRADOS_SLIM.find(g => g.minXP > xp) || null;
+          let logros = [];
+          try { logros = JSON.parse(data[i][COL.LOGROS] || "[]"); } catch(e) {}
+
+          return {
+            success: true,
+            rut: data[i][COL.RUT],
+            nombre: data[i][COL.NOMBRE],
+            xp: xp,
+            grado: grado,
+            gradoSiguiente: gradoSiguiente,
+            xpParaSiguiente: gradoSiguiente ? gradoSiguiente.minXP - xp : 0,
+            racha: parseInt(data[i][COL.RACHA_ACTUAL]) || 0,
+            rachaMax: parseInt(data[i][COL.RACHA_MAX]) || 0,
+            logros: logros,
+            quizzesCompletados: parseInt(data[i][COL.QUIZZES_COMPLETADOS]) || 0,
+            quizHoy: data[i][COL.QUIZ_ULTIMO_DIA] || "",
+            ultimaActividad: data[i][COL.ULTIMA_ACTIVIDAD] || "",
+            estado: estado
+          };
+        }
+      }
+    }
+
+    // No existe en GAMIFICACION aún → buscar en SLIMAPP y crear
+    const usuarioData = obtenerUsuarioPorRut(rutInput);
+    if (!usuarioData.encontrado) {
+      return { success: false, message: "RUT no encontrado en el sistema." };
+    }
+    return inicializarSocioGamificacion_(rutLimpio, usuarioData.nombre || "Socio", usuarioData.estado || "ACTIVO");
+
+  } catch (e) {
+    Logger.log("❌ Error en getProgresoSocio: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+/**
+ * Crea el registro inicial de un socio en BD_GAMIFICACION.
+ * Usa getSheet siguiendo la arquitectura centralizada del proyecto.
+ */
+function inicializarSocioGamificacion_(rutLimpio, nombreSocio, estadoSocio) {
+  try {
+    const sheet = getSheet('GAMIFICACION', 'GAMIFICACION');
+    const hoy = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy HH:mm");
+    const estado = estadoSocio || "ACTIVO";
+
+    sheet.appendRow([
+      rutLimpio,   // A: RUT
+      nombreSocio, // B: NOMBRE
+      0,           // C: XP_TOTAL
+      "Aspirante", // D: GRADO
+      "[]",        // E: LOGROS
+      0,           // F: RACHA_ACTUAL
+      0,           // G: RACHA_MAX
+      hoy,         // H: ULTIMA_ACTIVIDAD
+      "",          // I: QUIZ_ULTIMO_DIA
+      0,           // J: QUIZZES_COMPLETADOS
+      estado       // K: ESTADO
+    ]);
+
+    Logger.log("✅ Socio inicializado en SLIM Quest: " + rutLimpio + " (" + nombreSocio + ") — " + estado);
+
+    return {
+      success: true,
+      rut: rutLimpio,
+      nombre: nombreSocio,
+      xp: 0,
+      grado: GRADOS_SLIM[0],
+      gradoSiguiente: GRADOS_SLIM[1],
+      xpParaSiguiente: GRADOS_SLIM[1].minXP,
+      racha: 0,
+      rachaMax: 0,
+      logros: [],
+      quizzesCompletados: 0,
+      quizHoy: "",
+      ultimaActividad: hoy,
+      estado: estado,
+      recienCreado: true
+    };
+  } catch (e) {
+    Logger.log("❌ Error en inicializarSocioGamificacion_: " + e.toString());
+    return { success: false, message: "Error al inicializar: " + e.toString() };
+  }
+}
+
+/**
+ * Suma XP a un socio y actualiza su grado automáticamente.
+ * @param {string} rutInput  - RUT del socio
+ * @param {number} cantidad  - Puntos XP a sumar
+ * @param {string} motivo    - Descripción del motivo (para el log)
+ */
+function guardarXP(rutInput, cantidad, motivo) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return { success: false, message: "Servidor ocupado, intenta nuevamente." };
+  try {
+    const rutLimpio = cleanRut(rutInput);
+    const sheet = getSheet('GAMIFICACION', 'GAMIFICACION');
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      lock.releaseLock();
+      inicializarSocioGamificacion_(rutInput);
+      return guardarXP(rutInput, cantidad, motivo);
+    }
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 10).getDisplayValues();
+    const COL = CONFIG.COLUMNAS.GAMIFICACION;
+    const hoy = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy HH:mm");
+
+    for (let i = 0; i < data.length; i++) {
+      if (cleanRut(data[i][COL.RUT]) === rutLimpio) {
+        const xpActual = parseInt(data[i][COL.XP_TOTAL]) || 0;
+        const xpNuevo  = xpActual + cantidad;
+        const gradoAnterior = data[i][COL.GRADO];
+        const gradoNuevo    = calcularGrado_(xpNuevo);
+        const filaReal = i + 2;
+
+        sheet.getRange(filaReal, COL.XP_TOTAL + 1).setValue(xpNuevo);
+        sheet.getRange(filaReal, COL.GRADO + 1).setValue(gradoNuevo.nombre);
+        sheet.getRange(filaReal, COL.ULTIMA_ACTIVIDAD + 1).setValue(hoy);
+
+        Logger.log("✅ XP [" + motivo + "]: " + rutLimpio + " +" + cantidad + "XP → Total: " + xpNuevo + " | Grado: " + gradoNuevo.nombre);
+
+        return {
+          success: true,
+          xpSumado: cantidad,
+          xpTotal: xpNuevo,
+          grado: gradoNuevo,
+          subioGrado: gradoAnterior !== gradoNuevo.nombre,
+          gradoAnterior: gradoAnterior,
+          motivo: motivo
+        };
+      }
+    }
+
+    // No encontrado → inicializar y reintentar
+    lock.releaseLock();
+    inicializarSocioGamificacion_(rutInput);
+    return guardarXP(rutInput, cantidad, motivo);
+
+  } catch (e) {
+    Logger.log("❌ Error en guardarXP: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  } finally {
+    if (lock.hasLock()) lock.releaseLock();
+  }
+}
+
+/**
+ * Otorga un logro a un socio si aún no lo tiene.
+ */
+function otorgarLogro(rutInput, codigoLogro, nombreLogro, iconoLogro) {
+  try {
+    const rutLimpio = cleanRut(rutInput);
+    const sheet = getSheet('GAMIFICACION', 'GAMIFICACION');
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, message: "Socio no registrado en gamificación." };
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 10).getDisplayValues();
+    const COL = CONFIG.COLUMNAS.GAMIFICACION;
+
+    for (let i = 0; i < data.length; i++) {
+      if (cleanRut(data[i][COL.RUT]) === rutLimpio) {
+        let logros = [];
+        try { logros = JSON.parse(data[i][COL.LOGROS] || "[]"); } catch(e) {}
+
+        if (logros.some(l => l.codigo === codigoLogro)) {
+          return { success: true, nuevo: false };
+        }
+
+        const fecha = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy");
+        logros.push({ codigo: codigoLogro, nombre: nombreLogro, icono: iconoLogro, fecha: fecha });
+        sheet.getRange(i + 2, COL.LOGROS + 1).setValue(JSON.stringify(logros));
+
+        Logger.log("🏅 Logro [" + codigoLogro + "] otorgado a " + rutLimpio);
+        return { success: true, nuevo: true, logro: { codigo: codigoLogro, nombre: nombreLogro, icono: iconoLogro } };
+      }
+    }
+    return { success: false, message: "Socio no encontrado en gamificación." };
+  } catch (e) {
+    Logger.log("❌ Error en otorgarLogro: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+/**
+ * Devuelve el top 10 de socios por XP para el leaderboard mensual.
+ */
+function getLeaderboard() {
+  try {
+    const sheet = getSheet('GAMIFICACION', 'GAMIFICACION');
+    if (!sheet) return { success: false, message: "Hoja no encontrada." };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: true, ranking: [] };
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 10).getDisplayValues();
+    const COL = CONFIG.COLUMNAS.GAMIFICACION;
+    const ranking = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const xp = parseInt(data[i][COL.XP_TOTAL]) || 0;
+      if (xp > 0) {
+        ranking.push({
+          nombre: data[i][COL.NOMBRE] || "Socio",
+          xp: xp,
+          grado: data[i][COL.GRADO] || "Aspirante",
+          racha: parseInt(data[i][COL.RACHA_ACTUAL]) || 0
+        });
+      }
+    }
+
+    ranking.sort((a, b) => b.xp - a.xp);
+    return { success: true, ranking: ranking.slice(0, 10) };
+  } catch (e) {
+    Logger.log("❌ Error en getLeaderboard: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+/**
+ * SINCRONIZACIÓN MASIVA — Lee todos los socios de BD_SLIMAPP
+ * y los carga/actualiza en BD_GAMIFICACION automáticamente.
+ *
+ * REGLAS:
+ *  - Socio NUEVO      → se crea con XP=0, Grado=Aspirante
+ *  - Socio EXISTENTE  → solo actualiza NOMBRE y ESTADO (nunca toca XP ni logros)
+ *  - Socio DESVINCULADO → se marca como DESVINCULADO (conserva historial)
+ */
+function sincronizarSociosGamificacion() {
+  try {
+    Logger.log("🔄 Iniciando sincronización de socios con SLIM Quest...");
+
+    const sheetUsuarios = getSheet('USUARIOS', 'USUARIOS');
+    const sheetGame     = getSheet('GAMIFICACION', 'GAMIFICACION');
+    if (!sheetUsuarios || !sheetGame) {
+      Logger.log("❌ No se pudieron obtener las hojas necesarias.");
+      return;
+    }
+
+    const COL_U   = CONFIG.COLUMNAS.USUARIOS;
+    const COL_G   = CONFIG.COLUMNAS.GAMIFICACION;
+    const hoy     = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy HH:mm");
+
+    // ── 1. Leer BD_GAMIFICACION y construir mapa RUT → fila ─────────────────
+    const lastRowGame = sheetGame.getLastRow();
+    const mapaGame    = {};  // { rutLimpio: { fila: N, nombre: X, estado: Y } }
+
+    if (lastRowGame >= 2) {
+      const dataGame = sheetGame.getRange(2, 1, lastRowGame - 1, 11).getDisplayValues();
+      for (let i = 0; i < dataGame.length; i++) {
+        const rut = cleanRut(dataGame[i][COL_G.RUT]);
+        if (rut) {
+          mapaGame[rut] = {
+            fila: i + 2,  // fila real en la hoja (1-indexed, +1 por header)
+            nombre: dataGame[i][COL_G.NOMBRE],
+            estado: dataGame[i][COL_G.ESTADO]
+          };
+        }
+      }
+    }
+
+    // ── 2. Leer todos los socios de BD_SLIMAPP ───────────────────────────────
+    const lastRowU  = sheetUsuarios.getLastRow();
+    if (lastRowU < 2) {
+      Logger.log("ℹ️ No hay socios en BD_SLIMAPP.");
+      return;
+    }
+    const dataU = sheetUsuarios.getRange(2, 1, lastRowU - 1, COL_U.ESTADO + 1).getDisplayValues();
+
+    let creados      = 0;
+    let actualizados = 0;
+    let sinRut       = 0;
+    const nuevasFilas = [];  // acumular nuevas filas para appendRow en batch
+
+    for (let i = 0; i < dataU.length; i++) {
+      const rutLimpio = cleanRut(dataU[i][COL_U.RUT]);
+      if (!rutLimpio) { sinRut++; continue; }
+
+      const nombre = String(dataU[i][COL_U.NOMBRE] || "Socio").trim();
+      const estado = String(dataU[i][COL_U.ESTADO] || "ACTIVO").trim().toUpperCase();
+      // Normalizar estado: cualquier valor distinto de ACTIVO se trata como DESVINCULADO
+      const estadoNorm = (estado === "ACTIVO" || estado === "SI" || estado === "TRUE") ? "ACTIVO" : "DESVINCULADO";
+
+      if (mapaGame[rutLimpio]) {
+        // ── CASO A: Ya existe → solo actualizar NOMBRE y ESTADO si cambiaron ──
+        const registroActual = mapaGame[rutLimpio];
+        const nombreCambio = registroActual.nombre !== nombre;
+        const estadoCambio = String(registroActual.estado || "").toUpperCase() !== estadoNorm;
+
+        if (nombreCambio || estadoCambio) {
+          sheetGame.getRange(registroActual.fila, COL_G.NOMBRE + 1).setValue(nombre);
+          sheetGame.getRange(registroActual.fila, COL_G.ESTADO + 1).setValue(estadoNorm);
+          actualizados++;
+          Logger.log("🔄 Actualizado: " + rutLimpio + " | Estado: " + estadoNorm);
+        }
+      } else {
+        // ── CASO B: No existe → preparar nueva fila ───────────────────────────
+        nuevasFilas.push([
+          rutLimpio,   // A: RUT
+          nombre,      // B: NOMBRE
+          0,           // C: XP_TOTAL
+          "Aspirante", // D: GRADO
+          "[]",        // E: LOGROS
+          0,           // F: RACHA_ACTUAL
+          0,           // G: RACHA_MAX
+          hoy,         // H: ULTIMA_ACTIVIDAD
+          "",          // I: QUIZ_ULTIMO_DIA
+          0,           // J: QUIZZES_COMPLETADOS
+          estadoNorm   // K: ESTADO
+        ]);
+        creados++;
+      }
+    }
+
+    // ── 3. Escribir todas las filas nuevas en un solo batch ──────────────────
+    if (nuevasFilas.length > 0) {
+      const primeraFilaLibre = sheetGame.getLastRow() + 1;
+      sheetGame.getRange(primeraFilaLibre, 1, nuevasFilas.length, 11).setValues(nuevasFilas);
+    }
+
+    Logger.log("══════════════════════════════════════════");
+    Logger.log("📊 RESUMEN — sincronizarSociosGamificacion");
+    Logger.log("   ✅ Socios nuevos creados  : " + creados);
+    Logger.log("   🔄 Socios actualizados    : " + actualizados);
+    Logger.log("   ⚠️  Filas sin RUT válido  : " + sinRut);
+    Logger.log("   📅 Ejecutado el           : " + hoy);
+    Logger.log("══════════════════════════════════════════");
+
+  } catch (e) {
+    Logger.log("❌ Error en sincronizarSociosGamificacion: " + e.toString());
+  }
+}
+
+/**
+ * Configura el trigger automático diario para sincronizarSociosGamificacion.
+ * Ejecutar MANUALMENTE UNA SOLA VEZ desde el editor de Apps Script.
+ * Después de eso, corre solo todos los días a la 1am.
+ */
+function configurarTriggerGamificacion() {
+  // Eliminar triggers anteriores de esta función para evitar duplicados
+  ScriptApp.getProjectTriggers().forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === "sincronizarSociosGamificacion") {
+      ScriptApp.deleteTrigger(trigger);
+      Logger.log("🗑️ Trigger anterior eliminado.");
+    }
+  });
+
+  // Crear trigger diario a la 1am
+  ScriptApp.newTrigger("sincronizarSociosGamificacion")
+    .timeBased()
+    .everyDays(1)
+    .atHour(1)
+    .create();
+
+  Logger.log("✅ Trigger diario configurado: sincronizarSociosGamificacion se ejecutará todos los días a la 1am.");
+}
+
+/**
+ * Obtiene preguntas aleatorias del BANCO_PREGUNTAS para el quiz diario.
+ * Pondera el nivel según el grado actual del socio.
+ * @param {string} rutInput - RUT del socio (para obtener su grado actual)
+ * @param {number} cantidad - Número de preguntas a devolver (default: 5)
+ */
+function obtenerPreguntasQuiz(rutInput, cantidad) {
+  try {
+    cantidad = cantidad || 5;
+    const sheet = getSheet('GAMIFICACION', 'BANCO_PREGUNTAS');
+    if (!sheet) return { success: false, message: "Banco de preguntas no disponible." };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, message: "No hay preguntas cargadas aún." };
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 13).getDisplayValues();
+    const COL  = CONFIG.COLUMNAS.BANCO_PREGUNTAS;
+
+    // ── Obtener grado actual del socio para ponderar nivel ───────────────────
+    let gradoActual = "Aspirante";
+    try {
+      const progreso = getProgresoSocio(rutInput);
+      if (progreso.success && progreso.grado) gradoActual = progreso.grado.nombre;
+    } catch(e) {}
+
+    // ── Ponderación de niveles por grado ────────────────────────────────────
+    // Cuántas preguntas de cada nivel según el grado del socio
+    const pesos = {
+      "Aspirante":  { BASICO: 4, INTERMEDIO: 1, AVANZADO: 0 },
+      "Aprendiz":   { BASICO: 3, INTERMEDIO: 2, AVANZADO: 0 },
+      "Trabajador": { BASICO: 2, INTERMEDIO: 2, AVANZADO: 1 },
+      "Defensor":   { BASICO: 1, INTERMEDIO: 3, AVANZADO: 1 },
+      "Negociador": { BASICO: 1, INTERMEDIO: 2, AVANZADO: 2 },
+      "Dirigente":  { BASICO: 0, INTERMEDIO: 2, AVANZADO: 3 }
+    };
+    const pesoActual = pesos[gradoActual] || pesos["Aspirante"];
+
+    // ── Separar preguntas activas por nivel ──────────────────────────────────
+    const porNivel = { BASICO: [], INTERMEDIO: [], AVANZADO: [] };
+
+    for (let i = 0; i < data.length; i++) {
+      const activa = String(data[i][COL.ACTIVA]).toUpperCase();
+      if (activa !== "TRUE" && activa !== "VERDADERO" && activa !== "1") continue;
+
+      const nivel = String(data[i][COL.NIVEL]).toUpperCase().trim();
+      const pregunta = {
+        id:          data[i][COL.ID],
+        categoria:   data[i][COL.CATEGORIA],
+        nivel:       nivel,
+        pregunta:    data[i][COL.PREGUNTA],
+        opciones: {
+          A: data[i][COL.OPCION_A],
+          B: data[i][COL.OPCION_B],
+          C: data[i][COL.OPCION_C],
+          D: data[i][COL.OPCION_D]
+        },
+        respuesta:   data[i][COL.RESPUESTA].toUpperCase().trim(),
+        explicacion: data[i][COL.EXPLICACION],
+        xp:          parseInt(data[i][COL.XP]) || 20,
+        fuente:      data[i][COL.FUENTE]
+      };
+
+      if (porNivel[nivel] !== undefined) porNivel[nivel].push(pregunta);
+    }
+
+    // ── Función para sacar N preguntas aleatorias sin repetir ───────────────
+    function sacarAleatorio(arr, n) {
+      const copia = arr.slice();
+      const resultado = [];
+      for (let i = 0; i < n && copia.length > 0; i++) {
+        const idx = Math.floor(Math.random() * copia.length);
+        resultado.push(copia.splice(idx, 1)[0]);
+      }
+      return resultado;
+    }
+
+    // ── Armar selección ponderada ────────────────────────────────────────────
+    let seleccion = [];
+    seleccion = seleccion.concat(sacarAleatorio(porNivel.BASICO,      pesoActual.BASICO));
+    seleccion = seleccion.concat(sacarAleatorio(porNivel.INTERMEDIO,  pesoActual.INTERMEDIO));
+    seleccion = seleccion.concat(sacarAleatorio(porNivel.AVANZADO,    pesoActual.AVANZADO));
+
+    // Si por falta de preguntas no se llenó la cuota, rellenar con lo que haya
+    if (seleccion.length < cantidad) {
+      const usados  = new Set(seleccion.map(p => p.id));
+      const restantes = data
+        .filter(row => {
+          const activa = String(row[COL.ACTIVA]).toUpperCase();
+          return (activa === "TRUE" || activa === "VERDADERO" || activa === "1")
+                 && !usados.has(row[COL.ID]);
+        })
+        .map(row => ({
+          id: row[COL.ID],
+          categoria: row[COL.CATEGORIA],
+          nivel: String(row[COL.NIVEL]).toUpperCase().trim(),
+          pregunta: row[COL.PREGUNTA],
+          opciones: { A: row[COL.OPCION_A], B: row[COL.OPCION_B], C: row[COL.OPCION_C], D: row[COL.OPCION_D] },
+          respuesta: String(row[COL.RESPUESTA]).toUpperCase().trim(),
+          explicacion: row[COL.EXPLICACION],
+          xp: parseInt(row[COL.XP]) || 20,
+          fuente: row[COL.FUENTE]
+        }));
+      seleccion = seleccion.concat(sacarAleatorio(restantes, cantidad - seleccion.length));
+    }
+
+    // Mezclar orden final para evitar siempre el mismo patrón Básico→Avanzado
+    for (let i = seleccion.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [seleccion[i], seleccion[j]] = [seleccion[j], seleccion[i]];
+    }
+
+    Logger.log("✅ Quiz generado para " + rutInput + " | Grado: " + gradoActual + " | Preguntas: " + seleccion.length);
+    return { success: true, preguntas: seleccion.slice(0, cantidad), gradoActual: gradoActual };
+
+  } catch (e) {
+    Logger.log("❌ Error en obtenerPreguntasQuiz: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+/**
+ * Registra el resultado del quiz diario y otorga XP al socio.
+ * @param {string} rutInput       - RUT del socio
+ * @param {number} correctas      - Número de respuestas correctas (0-5)
+ * @param {number} xpGanado       - XP total calculado en el frontend
+ */
+function registrarResultadoQuiz(rutInput, correctas, xpGanado) {
+  try {
+    const rutLimpio = cleanRut(rutInput);
+    if (!rutLimpio) return { success: false, message: "RUT inválido." };
+
+    const sheet    = getSheet('GAMIFICACION', 'GAMIFICACION');
+    const lastRow  = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, message: "Socio no inicializado." };
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 11).getDisplayValues();
+    const COL  = CONFIG.COLUMNAS.GAMIFICACION;
+    const hoy  = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy");
+    const ahora = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy HH:mm");
+
+    for (let i = 0; i < data.length; i++) {
+      if (cleanRut(data[i][COL.RUT]) !== rutLimpio) continue;
+
+      const filaReal       = i + 2;
+      const quizUltimoDia  = String(data[i][COL.QUIZ_ULTIMO_DIA] || "").trim();
+
+      // Validación anti-trampa: no permitir jugar dos veces el mismo día
+      if (quizUltimoDia === hoy) {
+        return { success: false, message: "Ya completaste el quiz de hoy. ¡Vuelve mañana!" };
+      }
+
+      // ── Calcular racha ───────────────────────────────────────────────────
+      const rachaActual = parseInt(data[i][COL.RACHA_ACTUAL]) || 0;
+      const rachaMax    = parseInt(data[i][COL.RACHA_MAX])    || 0;
+      let nuevaRacha    = rachaActual;
+
+      // Verificar si jugó ayer para mantener racha
+      const ayer = new Date();
+      ayer.setDate(ayer.getDate() - 1);
+      const ayerStr = Utilities.formatDate(ayer, "America/Santiago", "dd/MM/yyyy");
+      nuevaRacha = (quizUltimoDia === ayerStr) ? rachaActual + 1 : 1;
+      const nuevaRachaMax = Math.max(nuevaRacha, rachaMax);
+
+      // ── Bonus de racha (cada 7 días consecutivos = +50 XP extra) ────────
+      let xpFinal   = xpGanado;
+      let bonusRacha = false;
+      if (nuevaRacha % 7 === 0) {
+        xpFinal   += 50;
+        bonusRacha = true;
+      }
+
+      // ── Actualizar fila ──────────────────────────────────────────────────
+      const xpActual  = parseInt(data[i][COL.XP_TOTAL]) || 0;
+      const xpNuevo   = xpActual + xpFinal;
+      const gradoNuevo = calcularGrado_(xpNuevo);
+      const quizzesAnt = parseInt(data[i][COL.QUIZZES_COMPLETADOS]) || 0;
+
+      sheet.getRange(filaReal, COL.XP_TOTAL + 1).setValue(xpNuevo);
+      sheet.getRange(filaReal, COL.GRADO + 1).setValue(gradoNuevo.nombre);
+      sheet.getRange(filaReal, COL.RACHA_ACTUAL + 1).setValue(nuevaRacha);
+      sheet.getRange(filaReal, COL.RACHA_MAX + 1).setValue(nuevaRachaMax);
+      sheet.getRange(filaReal, COL.QUIZ_ULTIMO_DIA + 1).setValue(hoy);
+      sheet.getRange(filaReal, COL.QUIZZES_COMPLETADOS + 1).setValue(quizzesAnt + 1);
+      sheet.getRange(filaReal, COL.ULTIMA_ACTIVIDAD + 1).setValue(ahora);
+
+      // ── Logros automáticos ───────────────────────────────────────────────
+      const logrosNuevos = [];
+      if (correctas === 5) {
+        const r = otorgarLogro(rutInput, "QUIZ_PERFECTO", "Quiz Perfecto", "🎯");
+        if (r.nuevo) logrosNuevos.push(r.logro);
+      }
+      if (quizzesAnt + 1 === 1) {
+        const r = otorgarLogro(rutInput, "PRIMER_QUIZ", "Primer Quiz", "🎮");
+        if (r.nuevo) logrosNuevos.push(r.logro);
+      }
+      if (quizzesAnt + 1 === 10) {
+        const r = otorgarLogro(rutInput, "10_QUIZZES", "10 Quizzes", "⭐");
+        if (r.nuevo) logrosNuevos.push(r.logro);
+      }
+      if (nuevaRacha === 7) {
+        const r = otorgarLogro(rutInput, "RACHA_7", "Racha de 7 días", "🔥");
+        if (r.nuevo) logrosNuevos.push(r.logro);
+      }
+
+      Logger.log("✅ Quiz registrado: " + rutLimpio + " | Correctas: " + correctas + "/5 | XP: +" + xpFinal + " | Racha: " + nuevaRacha);
+
+      return {
+        success: true,
+        correctas: correctas,
+        xpGanado: xpFinal,
+        bonusRacha: bonusRacha,
+        nuevaRacha: nuevaRacha,
+        xpTotal: xpNuevo,
+        grado: gradoNuevo,
+        subioGrado: data[i][COL.GRADO] !== gradoNuevo.nombre,
+        gradoAnterior: data[i][COL.GRADO],
+        logrosNuevos: logrosNuevos
+      };
+    }
+
+    return { success: false, message: "Socio no encontrado en gamificación." };
+
+  } catch (e) {
+    Logger.log("❌ Error en registrarResultadoQuiz: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  }
 }
