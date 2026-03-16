@@ -229,70 +229,16 @@
     #toggle-password-btn:focus {
       outline: none;
     }
-
-    /* ── CONTRATO COLECTIVO ── */
-    .cc-accordion-body {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease;
-      opacity: 0;
-    }
-    .cc-accordion-body.open {
-      max-height: 4000px;
-      opacity: 1;
-    }
-    .cc-accordion-chevron {
-      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-    }
-    .cc-accordion-chevron.open {
-      transform: rotate(180deg);
-    }
-    .cc-benefit-row {
-      border-left: 3px solid transparent;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    .cc-benefit-row:hover { border-left-color: #f59e0b; background: #fffbeb; }
-    .cc-pill-navy   { background:#1e3a5f; color:white; }
-    .cc-pill-amber  { background:#b45309; color:white; }
-    .cc-pill-teal   { background:#0f766e; color:white; }
-    .cc-pill-coral  { background:#be3a1d; color:white; }
-    .cc-pill        { display:inline-block; font-size:11px; font-weight:700;
-                      padding:2px 9px; border-radius:999px; white-space:nowrap; }
-    .cc-note-box {
-      background:#fef3c7; border-left:3px solid #f59e0b;
-      border-radius:0 8px 8px 0; padding:10px 14px;
-      font-size:13px; color:#92400e; line-height:1.6;
-    }
-    .cc-example-box {
-      background:#eff6ff; border-left:3px solid #3b82f6;
-      border-radius:0 8px 8px 0; padding:10px 14px;
-      font-size:13px; color:#1e3a8a; line-height:1.6;
-    }
-    .cc-slim-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .cc-slim-table th { background:#1e293b; color:white; padding:8px 12px; text-align:left; font-size:11px; font-weight:700; letter-spacing:.4px; }
-    .cc-slim-table td { padding:8px 12px; border-bottom:1px solid #e2e8f0; color:#475569; }
-    .cc-slim-table tr:last-child td { border-bottom:none; }
-    .cc-slim-table tr:nth-child(even) td { background:#f8fafc; }
-    .cc-monto-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
-    .cc-monto-card { background:#1e3a5f; border-radius:12px; padding:14px 16px; color:white; }
-    .cc-monto-card.amber { background: linear-gradient(135deg,#b45309,#d97706); }
-    .cc-monto-card.teal  { background: linear-gradient(135deg,#0f766e,#14b8a6); }
-    .cc-monto-card .label { font-size:10px; color:rgba(255,255,255,.6); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
-    .cc-monto-card .value { font-size:22px; font-weight:800; color:#fbbf24; line-height:1.1; }
-    .cc-monto-card .sub   { font-size:10px; color:rgba(255,255,255,.5); margin-top:3px; }
-    .cc-directiva-card { background:rgba(255,255,255,.08); border-radius:10px; padding:12px 14px; }
-    @media(max-width:640px) { .cc-monto-grid { grid-template-columns:1fr; } }
-
     </style>
   </head>
   <body class="text-slate-800 antialiased selection:bg-blue-200 selection:text-blue-900">
 
-    <main class="min-h-screen w-full flex flex-col items-center justify-start p-4 pt-8 sm:p-6 sm:pt-10 relative">
+    <main class="min-h-screen w-full flex flex-col items-center justify-center p-4 py-6 sm:p-6 relative">
       <div class="fixed top-[-10%] left-[-10%] w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob pointer-events-none"></div>
       <div class="fixed top-[-10%] right-[-10%] w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000 pointer-events-none"></div>
 
       <!-- LOGIN -->
-      <section id="login-view" class="w-full max-w-sm relative z-10 fade-in-up">
+      <section id="login-view" class="w-full max-w-sm relative z-10 fade-in-up my-auto">
         <div class="glass-panel rounded-2xl shadow-2xl p-5 sm:p-8 border-t border-white/50">
           <div class="text-center mb-4 sm:mb-6">
             <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-lg mb-3 text-white"><span class="material-icons-round text-2xl">groups</span></div>
@@ -336,644 +282,6 @@
         </div>
       </section>
 
-      <!-- ============================================================ -->
-      <!-- VISTA: CALCULADORA HORAS EXTRAORDINARIAS CC 2026             -->
-      <!-- ============================================================ -->
-      <section id="calculator-view" class="hidden w-full max-w-2xl z-20 flex-col glass-panel rounded-xl shadow-2xl overflow-hidden fade-in-up my-4 h-[90vh]">
-        <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 text-white p-5 flex-shrink-0 relative overflow-hidden">
-          <div class="absolute top-0 right-0 w-40 h-40 bg-emerald-500 rounded-full blur-3xl opacity-10 -mr-10 -mt-10"></div>
-          <div class="absolute bottom-0 left-0 w-28 h-28 bg-teal-500 rounded-full blur-2xl opacity-10 -ml-8 -mb-8"></div>
-          <div class="relative z-10 flex items-center gap-3">
-            <button onclick="switchView('dashboard-view')" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 transition flex items-center justify-center flex-shrink-0">
-              <span class="material-icons-round text-xl">arrow_back</span>
-            </button>
-            <div class="flex-1 min-w-0">
-              <p class="text-slate-400 text-[10px] uppercase tracking-widest font-bold">Sindicato SLIM N°3</p>
-              <h1 class="text-lg font-extrabold leading-tight text-white">Calculadora Horas Extra</h1>
-              <p class="text-slate-300 text-xs mt-0.5 flex items-center gap-1">
-                <span class="material-icons-round text-emerald-400 text-sm">verified</span>
-                Según Contrato Colectivo 2026
-              </p>
-            </div>
-            <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center">
-              <span class="material-icons-round text-emerald-300 text-xl">calculate</span>
-            </div>
-          </div>
-        </div>
-        <div class="flex-grow overflow-y-auto bg-slate-50">
-          <div class="p-4 space-y-4 pb-10">
-
-            <!-- PASO 1: CARGO -->
-            <div class="glass-card rounded-2xl overflow-hidden">
-              <div class="px-5 py-4 border-b border-slate-100">
-                <div class="flex items-center gap-2">
-                  <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-black">1</div>
-                  <h2 class="font-bold text-slate-800 text-sm">¿Cuál es tu función?</h2>
-                </div>
-              </div>
-              <div class="p-4 grid grid-cols-2 gap-3">
-                <button id="btn-cargo-limpieza" onclick="seleccionarCargo('limpieza')"
-                  class="calc-cargo-btn flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-emerald-400 transition-all text-center">
-                  <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center calc-cargo-icon">
-                    <span class="material-icons-round text-slate-500 text-2xl calc-cargo-icon-span">cleaning_services</span>
-                  </div>
-                  <div>
-                    <p class="text-xs font-bold text-slate-700 leading-tight">Aseo · Casino</p>
-                    <p class="text-xs font-bold text-slate-700 leading-tight">Mantención · Otros</p>
-                    <p class="text-[10px] text-emerald-600 font-semibold mt-1">Base: Total Imponible</p>
-                  </div>
-                </button>
-                <button id="btn-cargo-guardia" onclick="seleccionarCargo('guardia')"
-                  class="calc-cargo-btn flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-emerald-400 transition-all text-center">
-                  <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center calc-cargo-icon">
-                    <span class="material-icons-round text-slate-500 text-2xl calc-cargo-icon-span">security</span>
-                  </div>
-                  <div>
-                    <p class="text-xs font-bold text-slate-700 leading-tight">Guardia de</p>
-                    <p class="text-xs font-bold text-slate-700 leading-tight">Seguridad</p>
-                    <p class="text-[10px] text-amber-600 font-semibold mt-1">Base: Total Haberes</p>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            <!-- PASO 2A: FORM LIMPIEZA -->
-            <div id="calc-form-limpieza" class="hidden glass-card rounded-2xl overflow-hidden">
-              <div class="px-5 py-4 border-b border-slate-100">
-                <div class="flex items-center gap-2">
-                  <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-black">2</div>
-                  <h2 class="font-bold text-slate-800 text-sm">Tus datos de remuneración</h2>
-                </div>
-              </div>
-              <div class="p-4 space-y-4">
-                <div class="bg-blue-50 border-l-4 border-blue-400 rounded-xl p-3 space-y-2">
-                  <p class="text-blue-800 text-xs font-semibold flex items-center gap-1">
-                    <span class="material-icons-round text-sm">info</span> Aplica para estos cargos
-                  </p>
-                  <div class="flex flex-wrap gap-1">
-                    <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">Aseo / Limpieza</span>
-                    <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">Casino / Alimentación</span>
-                    <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">Mantención</span>
-                    <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">Choferes</span>
-                    <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">Jardineros</span>
-                    <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">Bodega / Logística</span>
-                    <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">Administrativos</span>
-                  </div>
-                  <p class="text-blue-700 text-xs leading-relaxed">Ingresa el campo <strong>"Total Imponible"</strong> de tu liquidación. Incluye sueldo base, gratificación y bonos imponibles.</p>
-                </div>
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1.5">Total Imponible mensual <span class="text-red-500">*</span></label>
-                  <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
-                    <input id="calc-imponible-limpieza" type="text" inputmode="numeric" placeholder="Ej: 178.086" oninput="calcFormatCLP(this)"
-                      class="w-full pl-7 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"/>
-                  </div>
-                  <p class="text-slate-400 text-[10px] mt-1 ml-1">Campo "Total Imponible" de tu liquidación</p>
-                </div>
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1.5">Jornada semanal</label>
-                  <div class="relative">
-                    <select id="calc-jornada-limpieza" class="w-full appearance-none pl-4 pr-10 py-3 bg-white border-2 border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 cursor-pointer shadow-sm transition-all">
-                      <option value="44">44 hrs/semana · Jornada legal completa</option>
-                      <option value="40">40 hrs/semana</option>
-                      <option value="30">30 hrs/semana · Jornada parcial</option>
-                      <option value="20">20 hrs/semana · Jornada parcial</option>
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                      <span class="material-icons-round text-emerald-500 text-lg">expand_more</span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1.5">¿Cuántas horas extra calcular? <span class="text-red-500">*</span></label>
-                  <input id="calc-horas-limpieza" type="number" inputmode="decimal" min="0.5" step="0.5" placeholder="Ej: 4"
-                    class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-emerald-400"/>
-                  <p class="text-slate-400 text-[10px] mt-1 ml-1">Puedes usar medias horas (ej: 1.5)</p>
-                </div>
-                <button onclick="calcularHE('limpieza')"
-                  class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/30 transition flex items-center justify-center gap-2 text-sm">
-                  <span class="material-icons-round text-base">calculate</span> Calcular Hora Extra
-                </button>
-              </div>
-            </div>
-
-            <!-- PASO 2B: FORM GUARDIA -->
-            <div id="calc-form-guardia" class="hidden glass-card rounded-2xl overflow-hidden">
-              <div class="px-5 py-4 border-b border-slate-100">
-                <div class="flex items-center gap-2">
-                  <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-black">2</div>
-                  <h2 class="font-bold text-slate-800 text-sm">Tus datos de remuneración</h2>
-                </div>
-              </div>
-              <div class="p-4 space-y-4">
-                <div class="bg-amber-50 border-l-4 border-amber-400 rounded-xl p-3 space-y-2">
-                  <p class="text-amber-800 text-xs font-semibold flex items-center gap-1">
-                    <span class="material-icons-round text-sm">security</span> Regla exclusiva Guardias de Seguridad
-                  </p>
-                  <p class="text-amber-700 text-xs leading-relaxed">Según la <strong>Cláusula Cuarta del CC 2026</strong>, para guardias la hora extra se calcula sobre el <strong>TOTAL de todos los haberes</strong>, no solo el imponible.</p>
-                  <div class="bg-amber-100 rounded-lg p-2 text-[10px] text-amber-800">
-                    <p class="font-bold mb-1">✅ Incluye en la base de cálculo:</p>
-                    <div class="flex flex-wrap gap-1">
-                      <span class="bg-white text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-200">Sueldo Base</span>
-                      <span class="bg-white text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-200">Gratificación</span>
-                      <span class="bg-white text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-200">Colación</span>
-                      <span class="bg-white text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-200">Movilización</span>
-                      <span class="bg-white text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-200">Bono Turno Noche</span>
-                      <span class="bg-white text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-200">Todos los bonos</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- ÚNICO CAMPO: TOTAL HABERES -->
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1.5">
-                    Total de Haberes mensuales <span class="text-red-500">*</span>
-                  </label>
-                  <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
-                    <input id="calc-total-guardia-simple" type="text" inputmode="numeric"
-                      placeholder="Ej: 749.958"
-                      oninput="calcFormatCLP(this)"
-                      class="w-full pl-7 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"/>
-                  </div>
-                  <p class="text-slate-400 text-[10px] mt-1 ml-1">Suma de TODOS los conceptos del campo "Haberes" de tu liquidación</p>
-                </div>
-              
-                <!-- JORNADA Y HORAS -->
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1.5">Jornada semanal</label>
-                  <div class="relative">
-                    <select id="calc-jornada-guardia" class="w-full appearance-none pl-4 pr-10 py-3 bg-white border-2 border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 cursor-pointer shadow-sm transition-all">
-                      <option value="44">44 hrs/semana · Jornada legal completa</option>
-                      <option value="48">48 hrs/semana · Turno 12h / 4 días</option>
-                      <option value="40">40 hrs/semana</option>
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                      <span class="material-icons-round text-emerald-500 text-lg">expand_more</span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1.5">¿Cuántas horas extra calcular? <span class="text-red-500">*</span></label>
-                  <input id="calc-horas-guardia" type="number" inputmode="decimal" min="0.5" step="0.5" placeholder="Ej: 12 (1 torno completo)"
-                    class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-emerald-400"/>
-                  <p class="text-slate-400 text-[10px] mt-1 ml-1">Un torno extra de 12h = 12 horas extra</p>
-                </div>
-                <button onclick="calcularHE('guardia')"
-                  class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/30 transition flex items-center justify-center gap-2 text-sm">
-                  <span class="material-icons-round text-base">calculate</span> Calcular Hora Extra
-                </button>
-              </div>
-            </div>
-
-            <!-- PASO 3: RESULTADO -->
-            <div id="calc-result" class="hidden glass-card rounded-2xl overflow-hidden">
-              <div class="px-5 py-4 border-b border-slate-100">
-                <div class="flex items-center gap-2">
-                  <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-black">3</div>
-                  <h2 class="font-bold text-slate-800 text-sm">Resultado del cálculo</h2>
-                </div>
-              </div>
-              <div class="p-4 space-y-3">
-                <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 text-center text-white shadow-lg">
-                  <p class="text-emerald-100 text-xs font-semibold uppercase tracking-widest mb-1">Total a recibir por</p>
-                  <p id="calc-result-num-horas" class="text-emerald-200 text-sm font-bold mb-2">0 horas extra</p>
-                  <p id="calc-result-total" class="text-4xl font-black tracking-tight">$0</p>
-                  <p class="text-emerald-200 text-[10px] mt-2">Valor bruto · Sujeto a descuentos legales</p>
-                </div>
-                <div class="bg-slate-50 rounded-xl divide-y divide-slate-100 border border-slate-100">
-                  <div class="flex justify-between items-center px-4 py-2.5">
-                    <span class="text-xs text-slate-500">Cargo</span>
-                    <span id="calc-result-cargo" class="text-xs font-bold text-slate-700">—</span>
-                  </div>
-                  <div class="flex justify-between items-center px-4 py-2.5">
-                    <span class="text-xs text-slate-500">Base de cálculo</span>
-                    <span id="calc-result-base" class="text-xs font-bold text-slate-700">$0</span>
-                  </div>
-                  <div class="flex justify-between items-center px-4 py-2.5">
-                    <span class="text-xs text-slate-500 flex items-center gap-1">
-                      Divisor mensual
-                      <span class="material-icons-round text-slate-400" style="font-size:13px;" title="Promedio legal: horas/semana × 4,333 (52 semanas ÷ 12 meses)">help_outline</span>
-                    </span>
-                    <span id="calc-result-horas-mes" class="text-xs font-bold text-slate-700">—</span>
-                  </div>
-                  <div class="flex justify-between items-center px-4 py-2.5">
-                    <span class="text-xs text-slate-500">Valor hora normal</span>
-                    <span id="calc-result-hora-normal" class="text-xs font-bold text-slate-700">$0</span>
-                  </div>
-                  <div class="flex justify-between items-center px-4 py-2.5 bg-emerald-50/50">
-                    <span class="text-xs text-emerald-700 font-semibold flex items-center gap-1">
-                      <span class="material-icons-round text-sm">add_circle</span>Valor hora extra (+50%)
-                    </span>
-                    <span id="calc-result-hora-extra" class="text-xs font-black text-emerald-700">$0</span>
-                  </div>
-                </div>
-                <div class="bg-slate-100 rounded-xl p-3">
-                  <p id="calc-result-nota" class="text-slate-600 text-[10px] leading-relaxed"></p>
-                </div>
-                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
-                  <span class="material-icons-round text-amber-500 text-base flex-shrink-0 mt-0.5">warning</span>
-                  <div>
-                    <p class="text-amber-800 text-xs font-bold leading-tight mb-0.5">Recordatorio importante</p>
-                    <p class="text-amber-700 text-[10px] leading-relaxed">Las horas extra deben estar <strong>autorizadas por escrito</strong> por tu superior directo para tener derecho al pago. Este cálculo es referencial.</p>
-                  </div>
-                </div>
-                <button onclick="reiniciarCalculadora()"
-                  class="w-full py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-bold text-sm hover:border-slate-300 hover:bg-slate-50 transition flex items-center justify-center gap-2">
-                  <span class="material-icons-round text-base">refresh</span> Hacer otro cálculo
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-      <!-- FIN CALCULADORA -->
-
-      <!-- VISTA: CONTRATO COLECTIVO -->
-      <section id="contrato-colectivo-view" class="hidden w-full max-w-2xl z-20 flex-col glass-panel rounded-xl shadow-2xl overflow-hidden fade-in-up my-4 h-[90vh]">
-        <!-- HEADER -->
-        <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 text-white p-5 flex-shrink-0 relative overflow-hidden">
-          <div class="absolute top-0 right-0 w-40 h-40 bg-blue-500 rounded-full blur-3xl opacity-10 -mr-10 -mt-10"></div>
-          <div class="absolute bottom-0 left-0 w-28 h-28 bg-amber-500 rounded-full blur-2xl opacity-10 -ml-8 -mb-8"></div>
-          <div class="relative z-10 flex items-center gap-3">
-            <button onclick="switchView('dashboard-view')" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 transition flex items-center justify-center flex-shrink-0">
-              <span class="material-icons-round text-xl">arrow_back</span>
-            </button>
-            <div class="flex-1 min-w-0">
-              <p class="text-slate-400 text-[10px] uppercase tracking-widest font-bold">Sindicato SLIM N°3</p>
-              <h1 class="text-lg font-extrabold leading-tight text-white">Contrato Colectivo</h1>
-              <p class="text-slate-300 text-xs mt-0.5 flex items-center gap-1">
-                <span class="material-icons-round text-amber-400 text-sm">schedule</span>
-                Vigente: 25 Feb 2026 — 24 Dic 2029
-              </p>
-            </div>
-            <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center">
-              <span class="material-icons-round text-amber-300 text-xl">description</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- CUERPO SCROLLABLE -->
-        <div class="flex-grow overflow-y-auto bg-slate-50">
-          <div class="p-4 space-y-3 pb-8">
-
-            <!-- CAP 1: PAGO Y REMUNERACIONES -->
-            <div class="glass-card rounded-2xl overflow-hidden">
-              <button onclick="ccToggle('cc-cap1')" class="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-50/80 transition">
-                <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-amber-100 text-amber-700"><span class="material-icons-round text-lg">payments</span></div>
-                <div class="flex-1 min-w-0">
-                  <span class="text-[10px] font-bold uppercase tracking-widest text-amber-600">Capítulo 01</span>
-                  <h2 class="font-bold text-slate-800 text-sm leading-tight">Tu Pago y Remuneraciones</h2>
-                </div>
-                <span class="material-icons-round text-slate-400 cc-accordion-chevron" id="cc-chev-cc-cap1">expand_more</span>
-              </button>
-              <div class="cc-accordion-body" id="cc-cap1">
-                <div class="border-t border-slate-100 divide-y divide-slate-100">
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-amber-600 text-base">event</span><span class="font-semibold text-slate-800 text-sm">¿Cuándo te pagan?</span></div>
-                    <p class="text-slate-600 text-xs leading-relaxed">Sueldo completo a más tardar el <strong>último día hábil del mes</strong> (transferencia, cuenta vista, cheque o SERVIPAG). El <strong>día 15</strong> recibes anticipo de hasta el <strong>50%</strong> de tu monto líquido. Reliquidaciones a más tardar el <strong>día 10 del mes siguiente</strong>.</p>
-                    <div class="cc-example-box mt-2">Si cobras el día 30 y cae domingo, te pagan el viernes anterior.</div>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-amber-600 text-base">percent</span><span class="font-semibold text-slate-800 text-sm">Gratificación Legal</span></div>
-                    <p class="text-slate-600 text-xs leading-relaxed">Según Arts. 47 y 48 Código del Trabajo. Mínimo <span class="cc-pill cc-pill-amber">$10.000/mes</span> desde marzo 2026. Proporcional a días trabajados u horas laborales si eres de jornada parcial.</p>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-amber-600 text-base">more_time</span><span class="font-semibold text-slate-800 text-sm">Horas Extraordinarias</span></div>
-                    <p class="text-slate-600 text-xs leading-relaxed">Cada hora extra <strong>autorizada por escrito</strong> se paga con recargo del <span class="cc-pill cc-pill-amber">50%</span> sobre tu hora normal.</p>
-                    <div class="cc-example-box mt-2">Hora normal $3.000 → hora extra $4.500.</div>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-amber-600 text-base">lunch_dining</span><span class="font-semibold text-slate-800 text-sm">Colación y Movilización</span></div>
-                    <p class="text-slate-600 text-xs mb-2">Si tu contrato individual tiene montos menores, la empresa paga:</p>
-                    <div class="cc-monto-grid">
-                      <div class="cc-monto-card"><div class="label">Colación</div><div class="value">$3.000</div><div class="sub">mensual · jornada completa</div></div>
-                      <div class="cc-monto-card amber"><div class="label">Movilización</div><div class="value">$5.000</div><div class="sub">mensual · jornada completa</div></div>
-                    </div>
-                    <div class="cc-note-box mt-3">Jornada parcial: montos proporcionales a tus horas.</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- CAP 2: BONOS -->
-            <div class="glass-card rounded-2xl overflow-hidden">
-              <button onclick="ccToggle('cc-cap2')" class="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-50/80 transition">
-                <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-teal-100 text-teal-700"><span class="material-icons-round text-lg">workspace_premium</span></div>
-                <div class="flex-1 min-w-0">
-                  <span class="text-[10px] font-bold uppercase tracking-widest text-teal-600">Capítulo 02</span>
-                  <h2 class="font-bold text-slate-800 text-sm leading-tight">Bonos por tu Trabajo</h2>
-                </div>
-                <span class="material-icons-round text-slate-400 cc-accordion-chevron" id="cc-chev-cc-cap2">expand_more</span>
-              </button>
-              <div class="cc-accordion-body" id="cc-cap2">
-                <div class="border-t border-slate-100 divide-y divide-slate-100">
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-teal-600 text-base">fitness_center</span><span class="font-semibold text-slate-800 text-sm">Bono Sobreesfuerzo</span></div>
-                    <div class="cc-monto-grid">
-                      <div class="cc-monto-card teal"><div class="label">Jornada completa (8h)</div><div class="value">$32.000</div><div class="sub">hasta Dic 2026</div></div>
-                      <div class="cc-monto-card teal"><div class="label">Por hora</div><div class="value">$4.000</div><div class="sub">imponibles</div></div>
-                    </div>
-                    <p class="text-slate-600 text-xs mt-2">Desde <strong>enero 2027</strong> sube a <span class="cc-pill cc-pill-teal">$38.000</span> por jornada completa.</p>
-                    <div class="cc-note-box mt-2">Sin documentación de horas, se paga como jornada completa.</div>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-teal-600 text-base">nights_stay</span><span class="font-semibold text-slate-800 text-sm">Bono Trabajo Nocturno</span></div>
-                    <table class="cc-slim-table mt-1 rounded-xl overflow-hidden">
-                      <thead><tr><th>Tipo</th><th>Monto</th></tr></thead>
-                      <tbody>
-                        <tr><td>Turno nocturno permanente</td><td><span class="cc-pill cc-pill-teal">$43.000 brutos/mes</span></td></tr>
-                        <tr><td>Rotativo / ocasional</td><td><span class="cc-pill cc-pill-navy">$400 por hora</span></td></tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-teal-600 text-base">supervisor_account</span><span class="font-semibold text-slate-800 text-sm">Bono Responsabilidad Superior</span></div>
-                    <p class="text-slate-600 text-xs mb-2">Para capataces, jefes de grupo, líderes o supervisores:</p>
-                    <p><span class="cc-pill cc-pill-teal" style="font-size:13px;padding:4px 12px;">$6.000 brutos por persona a cargo</span></p>
-                    <div class="cc-example-box mt-2">8 trabajadores a cargo → $48.000 brutos/mes.</div>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-teal-600 text-base">star</span><span class="font-semibold text-slate-800 text-sm">Otros Bonos por Función</span></div>
-                    <table class="cc-slim-table mt-1 rounded-xl overflow-hidden">
-                      <thead><tr><th>Bono</th><th>Monto</th></tr></thead>
-                      <tbody>
-                        <tr><td>Máquina hombre a bordo</td><td><span class="cc-pill cc-pill-teal">$89.063/mes</span></td></tr>
-                        <tr><td>Decapado y Reaplicado</td><td><span class="cc-pill cc-pill-navy">$25.000/día</span></td></tr>
-                        <tr><td>Lavado de Loza</td><td><span class="cc-pill cc-pill-navy">$25.000/mes</span></td></tr>
-                        <tr><td>Limpieza en Altura (+2m)</td><td><span class="cc-pill cc-pill-navy">$38.000/mes</span></td></tr>
-                        <tr><td>Lavado de Alfombra</td><td><span class="cc-pill cc-pill-navy">$25.000/evento</span></td></tr>
-                        <tr><td>Fumigación</td><td><span class="cc-pill cc-pill-navy">$25.000/evento</span></td></tr>
-                        <tr><td>Mantención Preventiva</td><td><span class="cc-pill cc-pill-navy">$73.494/mes</span></td></tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-teal-600 text-base">military_tech</span><span class="font-semibold text-slate-800 text-sm">Reconocimiento por Años de Servicio</span></div>
-                    <p class="text-slate-600 text-xs mb-2">Más de <strong>10 años en el holding ISS</strong>:</p>
-                    <p><span class="cc-pill cc-pill-teal" style="font-size:13px;padding:4px 12px;">$12.000 brutos/mes</span></p>
-                    <div class="cc-note-box mt-2">Se cuentan años de todos los contratos en empresas holding ISS, sin salir más de 1 mes entre contratos.</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- CAP 3: FAMILIA -->
-            <div class="glass-card rounded-2xl overflow-hidden">
-              <button onclick="ccToggle('cc-cap3')" class="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-50/80 transition">
-                <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-rose-100 text-rose-700"><span class="material-icons-round text-lg">favorite</span></div>
-                <div class="flex-1 min-w-0">
-                  <span class="text-[10px] font-bold uppercase tracking-widest text-rose-600">Capítulo 03</span>
-                  <h2 class="font-bold text-slate-800 text-sm leading-tight">Beneficios para Ti y tu Familia</h2>
-                </div>
-                <span class="material-icons-round text-slate-400 cc-accordion-chevron" id="cc-chev-cc-cap3">expand_more</span>
-              </button>
-              <div class="cc-accordion-body" id="cc-cap3">
-                <div class="border-t border-slate-100 divide-y divide-slate-100">
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-rose-600 text-base">celebration</span><span class="font-semibold text-slate-800 text-sm">Matrimonio o AUC</span></div>
-                    <ul class="text-xs text-slate-600 space-y-1">
-                      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-rose-400 flex-shrink-0"></span>1 semana de permiso pagado (además del legal)</li>
-                      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-rose-400 flex-shrink-0"></span><span class="cc-pill cc-pill-coral">$120.000 líquidos</span> el mes en que presentas el certificado</li>
-                    </ul>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-rose-600 text-base">child_care</span><span class="font-semibold text-slate-800 text-sm">Nacimiento o Adopción</span></div>
-                    <ul class="text-xs text-slate-600 space-y-1 mb-2">
-                      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-rose-400 flex-shrink-0"></span>1 semana de permiso pagado (además del legal)</li>
-                      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-rose-400 flex-shrink-0"></span><span class="cc-pill cc-pill-coral">$125.000 brutos</span> pagados el mes siguiente al nacimiento</li>
-                    </ul>
-                    <div class="cc-example-box">Nace el 3 de junio → recibes los $125.000 en julio.</div>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-rose-600 text-base">baby_changing_station</span><span class="font-semibold text-slate-800 text-sm">Apoyo Sala Cuna</span></div>
-                    <p class="text-slate-600 text-xs leading-relaxed">Si tu hijo/a no puede ir a sala cuna: <span class="cc-pill cc-pill-coral">$280.000/mes</span> hasta que el menor cumpla <strong>2 años</strong>. Aplica también a padres con custodia legal.</p>
-                    <div class="cc-note-box mt-2">Incompatible con el beneficio de sala cuna en especie.</div>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-rose-600 text-base">school</span><span class="font-semibold text-slate-800 text-sm">Asignación Escolar</span></div>
-                    <p class="text-slate-600 text-xs mb-2">Cada <strong>mayo</strong>: <span class="cc-pill cc-pill-coral">$44.000 líquidos</span> por cada hijo/a estudiante, cónyuge que estudia, o tú mismo si estudias.</p>
-                    <div class="cc-note-box">Presenta certificado al sindicato <strong>antes del 30 de abril</strong>.</div>
-                    <div class="cc-example-box mt-2">2 hijos + 1 en universidad → $132.000 en mayo.</div>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-rose-600 text-base">volunteer_activism</span><span class="font-semibold text-slate-800 text-sm">Fallecimiento — Ayuda</span></div>
-                    <div class="space-y-3 text-xs text-slate-600">
-                      <div><p class="font-semibold text-slate-700 mb-1">Si fallece el trabajador/a:</p><ul class="space-y-1 pl-3"><li>• Bienestar: <span class="cc-pill cc-pill-coral">$920.000</span> al 5° día hábil</li><li>• Indemnización voluntaria 85% años de servicio</li><li>• Empresa cubre gastos mortuorios</li></ul></div>
-                      <div><p class="font-semibold text-slate-700 mb-1">Si fallece cónyuge, hijo/a, padre o madre:</p><ul class="space-y-1 pl-3"><li>• <span class="cc-pill cc-pill-coral">$370.000 líquidos</span> al momento del deceso</li><li>• 5 días hábiles pagados adicionales</li></ul></div>
-                      <div><p class="font-semibold text-slate-700 mb-1">Si fallece un hermano de doble conjunción:</p><ul class="space-y-1 pl-3"><li>• 3 días hábiles pagados adicionales</li></ul></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- CAP 4: PRÉSTAMOS Y AYUDA -->
-            <div class="glass-card rounded-2xl overflow-hidden">
-              <button onclick="ccToggle('cc-cap4')" class="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-50/80 transition">
-                <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-purple-100 text-purple-700"><span class="material-icons-round text-lg">monetization_on</span></div>
-                <div class="flex-1 min-w-0">
-                  <span class="text-[10px] font-bold uppercase tracking-widest text-purple-600">Capítulo 04</span>
-                  <h2 class="font-bold text-slate-800 text-sm leading-tight">Préstamos y Ayuda Económica</h2>
-                </div>
-                <span class="material-icons-round text-slate-400 cc-accordion-chevron" id="cc-chev-cc-cap4">expand_more</span>
-              </button>
-              <div class="cc-accordion-body" id="cc-cap4">
-                <div class="border-t border-slate-100 divide-y divide-slate-100">
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-purple-600 text-base">account_balance_wallet</span><span class="font-semibold text-slate-800 text-sm">Préstamos Personales (sin interés)</span></div>
-                    <div class="mt-2 space-y-2">
-                      <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                        <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Antigüedad</p><p class="text-xs font-semibold text-slate-700 mt-0.5">6 meses – 2 años</p></div>
-                        <div class="text-center"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Monto</p><span class="cc-pill cc-pill-navy mt-0.5 inline-block">$300.000</span></div>
-                        <div class="text-right"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Cuotas</p><p class="text-xs font-semibold text-slate-700 mt-0.5">Hasta 10</p></div>
-                      </div>
-                      <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                        <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Antigüedad</p><p class="text-xs font-semibold text-slate-700 mt-0.5">2 años o más</p></div>
-                        <div class="text-center"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Monto</p><span class="cc-pill cc-pill-navy mt-0.5 inline-block">$400.000</span></div>
-                        <div class="text-right"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Cuotas</p><p class="text-xs font-semibold text-slate-700 mt-0.5">Hasta 10</p></div>
-                      </div>
-                    </div>
-                    <div class="cc-note-box mt-2">No puedes pedir uno nuevo con cuotas pendientes.</div>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-purple-600 text-base">beach_access</span><span class="font-semibold text-slate-800 text-sm">Préstamo Vacaciones (sin interés)</span></div>
-                    <div class="mt-2 space-y-2">
-                      <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                        <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Antigüedad</p><p class="text-xs font-semibold text-slate-700 mt-0.5">6 meses – 2 años</p></div>
-                        <div class="text-center"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Monto</p><span class="cc-pill cc-pill-navy mt-0.5 inline-block">$200.000</span></div>
-                        <div class="text-right"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Cuotas</p><p class="text-xs font-semibold text-slate-700 mt-0.5">Hasta 8</p></div>
-                      </div>
-                      <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                        <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Antigüedad</p><p class="text-xs font-semibold text-slate-700 mt-0.5">2 años o más</p></div>
-                        <div class="text-center"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Monto</p><span class="cc-pill cc-pill-navy mt-0.5 inline-block">$300.000</span></div>
-                        <div class="text-right"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Cuotas</p><p class="text-xs font-semibold text-slate-700 mt-0.5">Hasta 8</p></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-purple-600 text-base">local_pharmacy</span><span class="font-semibold text-slate-800 text-sm">Convenio Farmacia Ahumada</span></div>
-                    <p class="text-slate-600 text-xs leading-relaxed">Medicamentos con receta hasta <span class="cc-pill cc-pill-navy">$26.713/mes</span>, descontados de tu liquidación. Requiere <strong>1 año de antigüedad</strong> y estar afiliado al sindicato.</p>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-purple-600 text-base">cake</span><span class="font-semibold text-slate-800 text-sm">Aportes Fiestas Patrias y Navidad</span></div>
-                    <table class="cc-slim-table mt-1 rounded-xl overflow-hidden">
-                      <thead><tr><th>Grupo</th><th>Monto</th></tr></thead>
-                      <tbody>
-                        <tr><td>Neg. 2018 y 2021</td><td><span class="cc-pill cc-pill-amber">$57.000</span></td></tr>
-                        <tr><td>Neg. 2023</td><td><span class="cc-pill cc-pill-amber">$46.000</span></td></tr>
-                        <tr><td>Extensión 2023</td><td><span class="cc-pill cc-pill-amber">$40.000</span></td></tr>
-                        <tr><td>Nuevos socios</td><td><span class="cc-pill cc-pill-amber">$38.000</span></td></tr>
-                      </tbody>
-                    </table>
-                    <p class="text-xs text-slate-600 mt-2">Fechas: <strong>6 sep</strong> (Fiestas Patrias) y <strong>6 dic</strong> (Navidad).</p>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-purple-600 text-base">redeem</span><span class="font-semibold text-slate-800 text-sm">Fiesta de Navidad Hijos de Socios</span></div>
-                    <p class="text-slate-600 text-xs leading-relaxed">La empresa aporta <span class="cc-pill cc-pill-amber">$9.500.000</span> al sindicato. Pago el <strong>6 de diciembre</strong> de cada año.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- CAP 5: FERIADOS Y PERMISOS -->
-            <div class="glass-card rounded-2xl overflow-hidden">
-              <button onclick="ccToggle('cc-cap5')" class="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-50/80 transition">
-                <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-green-100 text-green-700"><span class="material-icons-round text-lg">beach_access</span></div>
-                <div class="flex-1 min-w-0">
-                  <span class="text-[10px] font-bold uppercase tracking-widest text-green-600">Capítulo 05</span>
-                  <h2 class="font-bold text-slate-800 text-sm leading-tight">Feriados y Permisos</h2>
-                </div>
-                <span class="material-icons-round text-slate-400 cc-accordion-chevron" id="cc-chev-cc-cap5">expand_more</span>
-              </button>
-              <div class="cc-accordion-body" id="cc-cap5">
-                <div class="border-t border-slate-100 divide-y divide-slate-100">
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-green-600 text-base">calendar_month</span><span class="font-semibold text-slate-800 text-sm">Calendarización de Feriados</span></div>
-                    <p class="text-slate-600 text-xs leading-relaxed">Calendario entregado antes del <strong>30 de agosto</strong>. Vacaciones entre <strong>1° dic y 31 mar</strong>. Solicita con <strong>30 días de anticipación</strong>. Si la empresa no responde en 30 días, puedes tomarlas igual.</p>
-                    <div class="cc-note-box mt-2">La falta de firma no puede quitarte el derecho a vacaciones ya calendarizadas.</div>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-green-600 text-base">check_circle</span><span class="font-semibold text-slate-800 text-sm">Permisos con Goce de Sueldo</span></div>
-                    <p class="text-slate-600 text-xs mb-1">Hasta 3 días hábiles pagados por:</p>
-                    <ul class="text-xs text-slate-600 space-y-1">
-                      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0"></span>Enfermedad o accidente grave de familiar directo</li>
-                      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0"></span>Siniestros o daños a tus bienes</li>
-                      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0"></span>Consultas/exámenes médicos (½ jornada; 1 día si es fuera de tu ciudad)</li>
-                    </ul>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-green-600 text-base">flight</span><span class="font-semibold text-slate-800 text-sm">Permiso Adicional Trabajadores Extranjeros</span></div>
-                    <p class="text-slate-600 text-xs leading-relaxed">Hasta <strong>15 días corridos sin sueldo</strong> para salir del país. Requiere: 2+ años de antigüedad, solicitud con 120+ días de anticipación, solo en meses: mar, abr, may, jun, ago, oct o nov.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- CAP 6: UNIFORMES -->
-            <div class="glass-card rounded-2xl overflow-hidden">
-              <button onclick="ccToggle('cc-cap6')" class="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-50/80 transition">
-                <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-100 text-blue-700"><span class="material-icons-round text-lg">checkroom</span></div>
-                <div class="flex-1 min-w-0">
-                  <span class="text-[10px] font-bold uppercase tracking-widest text-blue-600">Capítulo 06</span>
-                  <h2 class="font-bold text-slate-800 text-sm leading-tight">Uniformes y Capacitación</h2>
-                </div>
-                <span class="material-icons-round text-slate-400 cc-accordion-chevron" id="cc-chev-cc-cap6">expand_more</span>
-              </button>
-              <div class="cc-accordion-body" id="cc-cap6">
-                <div class="border-t border-slate-100 divide-y divide-slate-100">
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-blue-600 text-base">dry_cleaning</span><span class="font-semibold text-slate-800 text-sm">Uniformes y Ropa de Trabajo</span></div>
-                    <p class="text-slate-600 text-xs mb-2">Entrega <strong>dos veces al año</strong>:</p>
-                    <div class="grid grid-cols-2 gap-2">
-                      <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
-                        <span class="material-icons-round text-amber-600 text-2xl block mb-1">wb_sunny</span>
-                        <p class="text-xs font-bold text-amber-800">30 Abril · Verano</p>
-                        <p class="text-xs text-amber-700 mt-1">1 tenida completa</p>
-                      </div>
-                      <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
-                        <span class="material-icons-round text-blue-600 text-2xl block mb-1">ac_unit</span>
-                        <p class="text-xs font-bold text-blue-800">31 Oct · Invierno</p>
-                        <p class="text-xs text-blue-700 mt-1">2 tenidas + polar + zapatos</p>
-                      </div>
-                    </div>
-                    <div class="cc-note-box mt-2">Ropa dañada por el trabajo se repone antes de las fechas. Elementos de seguridad: reposición al día siguiente.</div>
-                  </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-blue-600 text-base">cast_for_education</span><span class="font-semibold text-slate-800 text-sm">Capacitación</span></div>
-                    <p class="text-slate-600 text-xs leading-relaxed">Hasta <span class="cc-pill cc-pill-navy">120 socios cada 3 meses</span>. Cursos definidos entre empresa y sindicato. Posibilidad de formato <strong>online</strong>.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- CAP 7: CONDICIONES ESPECIALES -->
-            <div class="glass-card rounded-2xl overflow-hidden">
-              <button onclick="ccToggle('cc-cap7')" class="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-50/80 transition">
-                <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-slate-700 text-white"><span class="material-icons-round text-lg">gavel</span></div>
-                <div class="flex-1 min-w-0">
-                  <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Capítulo 07</span>
-                  <h2 class="font-bold text-slate-800 text-sm leading-tight">Condiciones Especiales y Derechos</h2>
-                </div>
-                <span class="material-icons-round text-slate-400 cc-accordion-chevron" id="cc-chev-cc-cap7">expand_more</span>
-              </button>
-              <div class="cc-accordion-body" id="cc-cap7">
-                <div class="border-t border-slate-100 divide-y divide-slate-100">
-                  <div class="cc-benefit-row px-5 py-4">
-              <div class="flex items-center gap-2 mb-3"><span class="material-icons-round text-slate-600 text-base">shield</span><span class="font-semibold text-slate-800 text-sm">Condiciones que te Protegen</span></div>
-              <div class="space-y-2">
-                <div class="flex items-start gap-3 bg-amber-50 rounded-xl px-3 py-2.5">
-                  <span class="material-icons-round text-amber-600 text-base flex-shrink-0 mt-0.5">star</span>
-                  <p class="text-xs text-slate-700 leading-relaxed">Si tu contrato individual tiene valores <strong>mejores</strong>, se mantienen los tuyos.</p>
-                </div>
-                <div class="flex items-start gap-3 bg-amber-50 rounded-xl px-3 py-2.5">
-                  <span class="material-icons-round text-amber-600 text-base flex-shrink-0 mt-0.5">star</span>
-                  <p class="text-xs text-slate-700 leading-relaxed">Jornada de <strong>12 horas sin colación</strong> → esas horas se pagan como horas extra.</p>
-                </div>
-                <div class="flex items-start gap-3 bg-amber-50 rounded-xl px-3 py-2.5">
-                  <span class="material-icons-round text-amber-600 text-base flex-shrink-0 mt-0.5">star</span>
-                  <p class="text-xs text-slate-700 leading-relaxed"><strong>Cheques restaurant o Amipass</strong> se suman al cálculo de indemnización.</p>
-                </div>
-                <div class="flex items-start gap-3 bg-amber-50 rounded-xl px-3 py-2.5">
-                  <span class="material-icons-round text-amber-600 text-base flex-shrink-0 mt-0.5">star</span>
-                  <p class="text-xs text-slate-700 leading-relaxed">Para rendir la <strong>PAES</strong>: permiso o cambio de turno con 30 días de anticipación.</p>
-                </div>
-                <div class="flex items-start gap-3 bg-amber-50 rounded-xl px-3 py-2.5">
-                  <span class="material-icons-round text-amber-600 text-base flex-shrink-0 mt-0.5">star</span>
-                  <p class="text-xs text-slate-700 leading-relaxed">Trabajadores <strong>administrativos</strong>: salida a las 13:00 el día de su cumpleaños (día hábil).</p>
-                </div>
-              </div>
-            </div>
-                  <div class="cc-benefit-row px-5 py-4">
-                    <div class="flex items-center gap-2 mb-2"><span class="material-icons-round text-slate-600 text-base">group_add</span><span class="font-semibold text-slate-800 text-sm">Extensión de Beneficios</span></div>
-                    <p class="text-slate-600 text-xs leading-relaxed">Se extienden a nuevos socios hasta <span class="cc-pill cc-pill-navy">2.700 socios totales</span>. Quienes acceden por extensión deben pagar el <strong>100% de la cuota sindical</strong>. Al renunciar al sindicato, pierden los beneficios.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- FOOTER DIRECTIVA -->
-            <div class="bg-gradient-to-br from-slate-900 to-blue-900 rounded-2xl p-5 text-white">
-              <div class="text-center mb-4">
-                <span class="material-icons-round text-amber-400 text-3xl block mb-2">handshake</span>
-                <h3 class="font-bold text-base">Tu Sindicato trabaja por ti</h3>
-                <p class="text-slate-400 text-xs mt-1">Ante cualquier duda, consulta a tu directiva</p>
-              </div>
-              <div class="grid grid-cols-2 gap-2 mt-3">
-                <div class="cc-directiva-card"><p class="text-amber-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Presidente</p><p class="text-white text-xs font-medium">Carlos Orellana G.</p></div>
-                <div class="cc-directiva-card"><p class="text-amber-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Tesorero</p><p class="text-white text-xs font-medium">Franco Collao V.</p></div>
-                <div class="cc-directiva-card"><p class="text-amber-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Secretario</p><p class="text-white text-xs font-medium">Carlos Pacheco M.</p></div>
-                <div class="cc-directiva-card"><p class="text-amber-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Directora</p><p class="text-white text-xs font-medium">Felicita Anartes C.</p></div>
-                <div class="cc-directiva-card col-span-2"><p class="text-amber-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Directora</p><p class="text-white text-xs font-medium">Sofia Leonardini C.</p></div>
-              </div>
-              <p class="text-center text-slate-500 text-[10px] mt-4">Sindicato N°3 · ISS SLIM S.A. · Ahumada 312, Of. 323, Santiago</p>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
       <!-- DASHBOARD -->
       <section id="dashboard-view" class="hidden w-full max-w-5xl z-10 flex-col md:flex-row glass-panel rounded-xl md:rounded-3xl shadow-2xl overflow-hidden fade-in-up transition-all duration-500 my-2 md:my-0">
         <header class="bg-slate-900 text-white p-5 md:p-6 md:w-72 flex-shrink-0 flex flex-col justify-between relative overflow-hidden">
@@ -985,30 +293,6 @@
           <div class="p-4 pb-2 md:p-8 md:pb-4"><h3 class="text-lg font-bold text-slate-800">Menú de Gestión</h3><p class="text-slate-500 text-xs">Selecciona una opción para comenzar</p></div>
           <div class="flex-grow p-4 md:p-8 pt-2"><div class="grid grid-cols-2 md:grid-cols-3 gap-3 pb-4">
               <button onclick="navAction('Mis Datos')" class="glass-card group flex flex-col items-center justify-center p-3 py-5 rounded-xl text-center hover:bg-white hover:shadow-xl hover:border-blue-200 relative overflow-hidden"><div class="absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-100 transition duration-300"></div><div class="w-10 h-10 md:w-14 md:h-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-2 group-hover:scale-110 transition duration-300 relative z-10"><span class="material-icons-round text-xl md:text-2xl">badge</span></div><span class="font-bold text-slate-700 text-xs md:text-base relative z-10">Mis Datos</span></button>
-              
-              <button onclick="navAction('ContratoColectivo')" class="glass-card group flex flex-col items-center justify-center p-3 py-5 rounded-xl text-center hover:bg-white hover:shadow-xl hover:border-amber-200 relative overflow-hidden">
-                <div class="absolute inset-0 bg-amber-50 opacity-0 group-hover:opacity-100 transition duration-300"></div>
-                <div class="w-10 h-10 md:w-14 md:h-14 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mb-2 group-hover:scale-110 transition duration-300 relative z-10">
-                  <span class="material-icons-round text-xl md:text-2xl">description</span>
-                </div>
-                <span class="font-bold text-slate-700 text-xs md:text-base relative z-10">Mi Contrato</span>
-              </button>
-
-              <button onclick="navAction('CalculadoraHE')" class="glass-card group flex flex-col items-center justify-center p-3 py-5 rounded-xl text-center hover:bg-white hover:shadow-xl hover:border-emerald-200 relative overflow-hidden">
-                <div class="absolute inset-0 bg-emerald-50 opacity-0 group-hover:opacity-100 transition duration-300"></div>
-                <div class="w-10 h-10 md:w-14 md:h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-2 group-hover:scale-110 transition duration-300 relative z-10">
-                  <span class="material-icons-round text-xl md:text-2xl">calculate</span>
-                </div>
-                <span class="font-bold text-slate-700 text-xs md:text-base relative z-10">Hora Extra</span>
-              </button>
-
-              <button onclick="navAction('MiProgreso')" class="glass-card group flex flex-col items-center justify-center p-3 py-5 rounded-xl text-center hover:bg-white hover:shadow-xl hover:border-purple-200 relative overflow-hidden">
-                <div class="absolute inset-0 bg-purple-50 opacity-0 group-hover:opacity-100 transition duration-300"></div>
-                <div class="w-10 h-10 md:w-14 md:h-14 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mb-2 group-hover:scale-110 transition duration-300 relative z-10">
-                  <span class="material-icons-round text-xl md:text-2xl">sports_esports</span>
-                </div>
-                <span class="font-bold text-slate-700 text-xs md:text-base relative z-10">SLIM Quest</span>
-              </button>
               
               <button onclick="navAction('RegistroAsistencia')" class="glass-card group flex flex-col items-center justify-center p-3 py-5 rounded-xl text-center hover:bg-white hover:shadow-xl hover:border-green-200 relative overflow-hidden"><div class="absolute inset-0 bg-green-50 opacity-0 group-hover:opacity-100 transition duration-300"></div><div class="w-10 h-10 md:w-14 md:h-14 rounded-full bg-green-100 text-green-600 flex items-center justify-center mb-2 group-hover:scale-110 transition duration-300 relative z-10"><span class="material-icons-round text-xl md:text-2xl">history_edu</span></div><span class="font-bold text-slate-700 text-xs md:text-base relative z-10">Registro Asistencia</span></button>
 
@@ -1256,7 +540,16 @@
         <div class="bg-slate-900 text-white p-4 flex items-center gap-4 relative overflow-hidden flex-shrink-0">
            <div class="absolute top-0 right-0 w-32 h-32 bg-purple-500 rounded-full blur-3xl opacity-20 -mr-10 -mt-10"></div>
            <button onclick="switchView('dashboard-view')" class="z-10 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"><span class="material-icons-round">arrow_back</span></button>
-           <h2 class="text-lg font-bold z-10">Módulo de Préstamos</h2>
+           <h2 class="text-lg font-bold z-10 flex-grow">Módulo de Préstamos</h2>
+
+           <!-- SWITCH ADMIN (solo visible para ADMIN) -->
+           <div id="loans-switch-container" class="hidden z-10 flex flex-col items-center gap-1">
+              <label class="toggle-switch">
+                 <input type="checkbox" id="loans-switch" onchange="handleLoansSwitch()">
+                 <span class="toggle-slider"></span>
+              </label>
+              <span class="text-[9px] text-white/60 font-semibold">Módulo</span>
+           </div>
         </div>
 
         <div class="flex-grow flex flex-col bg-slate-50/50 overflow-hidden">
@@ -1763,267 +1056,6 @@
         </div>
       </section>
 
-      <!-- VISTA: SLIM QUEST LEADERBOARD -->
-      <section id="slim-quest-leaderboard-view" class="hidden w-full max-w-2xl z-20 flex-col glass-panel rounded-xl shadow-2xl overflow-hidden fade-in-up my-4">
-
-        <!-- HEADER -->
-        <div class="bg-slate-900 text-white p-4 flex items-center gap-3 relative overflow-hidden flex-shrink-0">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500 rounded-full blur-3xl opacity-20 -mr-10 -mt-10"></div>
-          <button onclick="switchView('slim-quest-view')" class="z-10 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
-            <span class="material-icons-round">arrow_back</span>
-          </button>
-          <div class="z-10 flex-1">
-            <h2 class="text-base font-bold leading-tight">Clasificación</h2>
-            <p class="text-[10px] text-white/60 font-medium">Top socios por XP acumulado</p>
-          </div>
-          <div class="z-10 w-9 h-9 rounded-full bg-amber-500/20 border border-amber-400/30 flex items-center justify-center">
-            <span class="material-icons-round text-amber-400 text-xl">emoji_events</span>
-          </div>
-        </div>
-
-        <!-- BODY -->
-        <div class="flex-grow overflow-y-auto bg-slate-50/50 p-4 space-y-3">
-
-          <!-- LOADER -->
-          <div id="lb-loader" class="flex flex-col items-center justify-center py-12">
-            <div class="loader mb-3"></div>
-            <p class="text-xs text-slate-400">Cargando clasificación...</p>
-          </div>
-
-          <!-- CONTENIDO -->
-          <div id="lb-content" class="hidden space-y-3">
-
-            <!-- BANNER INFORMATIVO -->
-            <div class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200 p-3 flex items-center gap-3">
-              <span class="material-icons-round text-amber-500 text-xl flex-shrink-0">info</span>
-              <p class="text-xs text-amber-800 leading-relaxed">
-                Ranking por <strong>XP total acumulado</strong>. ¡Completa quizzes diarios para subir posiciones!
-              </p>
-            </div>
-
-            <!-- MI POSICIÓN (visible siempre, muestra posición real) -->
-            <div id="lb-mi-posicion" class="hidden bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-200 p-3">
-              <p class="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-2">Tu posición</p>
-              <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0" id="lb-mi-num">#–</div>
-                <div class="flex-1">
-                  <div class="text-sm font-bold text-slate-800">Tú</div>
-                  <div class="text-xs text-slate-500" id="lb-mi-grado-xp">–</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- TOP 10 -->
-            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div class="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
-                <span class="material-icons-round text-amber-500 text-base">military_tech</span>
-                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Top 10 Socios</span>
-              </div>
-              <div id="lb-lista" class="divide-y divide-slate-100"></div>
-              <div id="lb-empty" class="hidden text-center py-10">
-                <span class="material-icons-round text-4xl text-slate-300 block mb-2">leaderboard</span>
-                <p class="text-sm text-slate-400">Aún no hay socios con XP acumulado.</p>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      <!-- VISTA: SLIM QUEST — QUIZ EN JUEGO -->
-      <section id="slim-quest-quiz-view" class="hidden w-full max-w-2xl z-20 flex-col glass-panel rounded-xl shadow-2xl overflow-hidden fade-in-up my-4 h-[90vh]">
-
-        <!-- Header -->
-        <div class="bg-slate-900 text-white p-4 flex items-center gap-4 relative overflow-hidden flex-shrink-0">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-purple-500 rounded-full blur-3xl opacity-20 -mr-10 -mt-10"></div>
-          <button onclick="salirDelQuiz()" class="z-10 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
-            <span class="material-icons-round">close</span>
-          </button>
-          <div class="z-10 flex-1">
-            <h2 class="text-base font-bold">Quiz Sindical Diario</h2>
-          </div>
-          <!-- Progreso de preguntas -->
-          <div id="quiz-progreso-label" class="z-10 text-xs text-white/70 font-medium">1 / 5</div>
-        </div>
-
-        <!-- Barra de progreso superior -->
-        <div class="h-1.5 bg-slate-200 flex-shrink-0">
-          <div id="quiz-progreso-bar" class="h-1.5 bg-purple-500 transition-all duration-500" style="width:0%"></div>
-        </div>
-
-        <!-- Loader inicial -->
-        <div id="quiz-loader" class="flex-grow flex flex-col items-center justify-center bg-slate-50/50">
-          <div class="loader mb-3"></div>
-          <p class="text-xs text-slate-500">Preparando preguntas...</p>
-        </div>
-
-        <!-- Contenedor del quiz -->
-        <div id="quiz-contenedor" class="hidden flex-grow flex flex-col bg-slate-50/50 overflow-hidden">
-
-          <!-- Zona de pregunta + opciones -->
-          <div class="flex-grow overflow-y-auto p-4 flex flex-col gap-4">
-
-            <!-- Categoría y nivel -->
-            <div id="quiz-meta" class="flex gap-2"></div>
-
-            <!-- Texto de la pregunta -->
-            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-              <p id="quiz-pregunta-texto" class="text-sm font-bold text-slate-800 leading-relaxed"></p>
-            </div>
-
-            <!-- Opciones A B C D -->
-            <div id="quiz-opciones" class="space-y-2"></div>
-
-            <!-- Explicación (aparece tras responder) -->
-            <div id="quiz-explicacion" class="hidden rounded-xl p-4 border-l-4">
-              <p class="text-xs font-bold mb-1" id="quiz-expl-titulo"></p>
-              <p class="text-xs leading-relaxed text-slate-600" id="quiz-expl-texto"></p>
-              <p class="text-xs text-slate-400 mt-2" id="quiz-expl-fuente"></p>
-            </div>
-
-          </div>
-
-          <!-- Pie: XP ganado en esta pregunta + botón siguiente -->
-          <div class="p-4 bg-white border-t border-slate-200 flex items-center gap-3 flex-shrink-0">
-            <div id="quiz-xp-instant" class="text-sm font-bold text-purple-600 min-w-[64px]"></div>
-            <button id="quiz-btn-siguiente" onclick="siguientePregunta()"
-              class="flex-1 py-3 rounded-xl bg-slate-800 text-white font-bold text-sm hover:bg-slate-700 active:scale-95 transition hidden">
-              Siguiente →
-            </button>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- VISTA: SLIM QUEST -->
-      <section id="slim-quest-view" class="hidden w-full max-w-2xl z-20 flex-col glass-panel rounded-xl shadow-2xl overflow-hidden fade-in-up my-4 h-[90vh]">
-        <!-- Header -->
-        <div class="bg-slate-900 text-white p-4 flex items-center gap-4 relative overflow-hidden flex-shrink-0">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-purple-500 rounded-full blur-3xl opacity-20 -mr-10 -mt-10"></div>
-          <button onclick="switchView('dashboard-view')" class="z-10 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
-            <span class="material-icons-round">arrow_back</span>
-          </button>
-          <div class="z-10 flex-1">
-            <h2 class="text-lg font-bold">SLIM Quest</h2>
-            <p class="text-xs text-white/60">Aprende · Participa · Progresa</p>
-          </div>
-          <div id="sq-grado-badge" onclick="mostrarInfoGrado()" class="z-10 text-xs font-bold bg-purple-600/80 px-3 py-1 rounded-full cursor-pointer active:scale-95 transition hover:bg-purple-500/90"></div>
-        </div>
-
-        <!-- Loader -->
-        <div id="sq-loader" class="flex-grow flex items-center justify-center bg-slate-50/50">
-          <div class="flex flex-col items-center gap-3">
-            <div class="loader"></div>
-            <p class="text-xs text-slate-500">Cargando tu progreso...</p>
-          </div>
-        </div>
-
-        <!-- Contenido principal (oculto hasta cargar) -->
-        <div id="sq-content" class="hidden flex-grow flex-col bg-slate-50/50 overflow-y-auto">
-
-          <!-- Tarjeta de progreso XP -->
-          <div class="p-4 bg-white border-b border-slate-200 flex-shrink-0">
-            <div class="flex items-center gap-4 mb-3">
-              <div id="sq-grado-icon" class="text-4xl"></div>
-              <div class="flex-1">
-                <div class="flex justify-between items-baseline mb-1">
-                  <span id="sq-grado-nombre" class="text-base font-bold text-slate-800"></span>
-                  <span id="sq-xp-label" class="text-xs text-slate-500"></span>
-                </div>
-                <!-- Barra de progreso XP -->
-                <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
-                  <div id="sq-xp-bar" class="h-3 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-700" style="width:0%"></div>
-                </div>
-                <div id="sq-xp-siguiente" class="text-xs text-slate-400 mt-1"></div>
-              </div>
-            </div>
-            <!-- Stats rápidas -->
-            <div class="grid grid-cols-3 gap-2 mt-2">
-              <div class="bg-purple-50 rounded-lg p-2 text-center">
-                <div id="sq-stat-xp" class="text-lg font-bold text-purple-700">0</div>
-                <div class="text-[10px] text-purple-500 font-medium">XP Total</div>
-              </div>
-              <div class="bg-orange-50 rounded-lg p-2 text-center">
-                <div id="sq-stat-racha" class="text-lg font-bold text-orange-600">0</div>
-                <div class="text-[10px] text-orange-500 font-medium">Racha 🔥</div>
-              </div>
-              <div class="bg-blue-50 rounded-lg p-2 text-center">
-                <div id="sq-stat-quizzes" class="text-lg font-bold text-blue-600">0</div>
-                <div class="text-[10px] text-blue-500 font-medium">Quizzes</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Acciones del juego -->
-          <div class="p-4 space-y-3">
-
-            <!-- Quiz Diario -->
-            <div id="sq-quiz-card" class="glass-card rounded-xl p-4 flex items-center gap-4 cursor-pointer hover:shadow-lg hover:border-purple-200 transition" onclick="iniciarQuizDiario()">
-              <div class="w-12 h-12 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0">
-                <span class="material-icons-round text-2xl">quiz</span>
-              </div>
-              <div class="flex-1">
-                <div class="font-bold text-slate-700 text-sm">Quiz Sindical Diario</div>
-                <div class="text-xs text-slate-500 mt-0.5">5 preguntas · Gana hasta 100 XP</div>
-              </div>
-              <div id="sq-quiz-estado" class="text-xs font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">Jugar</div>
-            </div>
-
-            <!-- Próximamente: Escenarios -->
-            <div class="glass-card rounded-xl p-4 flex items-center gap-4 opacity-50">
-              <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center flex-shrink-0">
-                <span class="material-icons-round text-2xl">map</span>
-              </div>
-              <div class="flex-1">
-                <div class="font-bold text-slate-600 text-sm">Escenarios</div>
-                <div class="text-xs text-slate-400 mt-0.5">Simulaciones · Próximamente</div>
-              </div>
-              <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full font-medium">Pronto</span>
-            </div>
-
-            <!-- Clasificación - ACTIVO -->
-            <div class="glass-card rounded-xl p-4 flex items-center gap-4 cursor-pointer active:scale-[0.98] transition hover:shadow-md hover:border-amber-200"
-                onclick="cargarLeaderboard()">
-              <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
-                <span class="material-icons-round text-2xl">leaderboard</span>
-              </div>
-              <div class="flex-1">
-                <div class="font-bold text-slate-800 text-sm">Clasificación</div>
-                <div class="text-xs text-slate-500 mt-0.5">Top socios · XP acumulado</div>
-              </div>
-              <span class="material-icons-round text-slate-400 text-lg">chevron_right</span>
-            </div>
-
-            <!-- Nivel Secreto Dirigente -->
-            <div id="sq-nivel-secreto" class="hidden rounded-xl p-4 flex items-center gap-4 cursor-pointer active:scale-[0.98] transition"
-                style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);border:1.5px solid #a78bfa;"
-                onclick="iniciarQuizSecreto()">
-              <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                  style="background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.4);">
-                <span class="material-icons-round text-2xl" style="color:#f5d060;">auto_awesome</span>
-              </div>
-              <div class="flex-1">
-                <div class="font-bold text-sm" style="color:#f5d060;">Nivel Secreto</div>
-                <div class="text-xs mt-0.5" style="color:#a78bfa;">Teoría Dirigencial · El Capital y Economía Política</div>
-              </div>
-              <div class="text-xs font-bold px-2 py-1 rounded-full" style="background:rgba(245,208,96,0.15);color:#f5d060;border:1px solid rgba(245,208,96,0.3);">🔐</div>
-            </div>
-
-          </div>
-
-          <!-- Logros -->
-          <div class="px-4 pb-4">
-            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Mis logros</h3>
-            <div id="sq-logros-container" class="grid grid-cols-4 gap-2"></div>
-            <div id="sq-logros-empty" class="hidden text-center py-6 text-slate-400 text-xs">
-              <span class="material-icons-round text-3xl block mb-1 opacity-40">emoji_events</span>
-              Aún no tienes logros. ¡Juega para desbloquearlos!
-            </div>
-          </div>
-
-        </div>
-      </section>
-
       <!-- VISTA: GESTIÓN SOCIOS -->
       <section id="management-view" class="hidden w-full max-w-2xl z-20 flex-col glass-panel rounded-xl shadow-2xl overflow-hidden fade-in-up my-4 h-[90vh]">
         <div class="bg-slate-900 text-white p-4 flex items-center gap-4 relative overflow-hidden flex-shrink-0">
@@ -2237,6 +1269,24 @@
              </p>
              <button onclick="handleOutOfDeadlineConfirm()" class="w-full py-2 rounded-lg bg-red-600 text-white font-bold text-sm hover:bg-red-700 shadow-lg shadow-red-500/30">
                 Ver Historial
+             </button>
+         </div>
+      </div>
+
+      <!-- Modal Mantenimiento Préstamos -->
+      <div id="loans-maintenance-modal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+         <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 text-center fade-in-up">
+             <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="material-icons-round text-2xl">build</span>
+             </div>
+             <h3 class="text-lg font-bold text-slate-800 mb-2">Módulo en Pausa</h3>
+             <p class="text-xs text-slate-600 mb-5">
+                Este módulo está en pausa por mantenimiento.<br><br>
+                Vuelva a intentar más tarde.
+             </p>
+             <button onclick="document.getElementById('loans-maintenance-modal').classList.add('hidden')" class="w-full py-3 rounded-xl bg-slate-800 text-white font-bold text-sm hover:bg-slate-700 transition shadow-lg shadow-slate-500/30 flex items-center justify-center gap-2">
+                <span class="material-icons-round text-sm">arrow_back</span>
+                <span>Volver</span>
              </button>
          </div>
       </div>
@@ -3179,10 +2229,22 @@
         switchContainer.classList.remove('hidden');
         switchContainer.classList.add('flex');
         
+        var loansSwitchContainer = document.getElementById('loans-switch-container');
+        if (loansSwitchContainer) {
+          loansSwitchContainer.classList.remove('hidden');
+          loansSwitchContainer.classList.add('flex');
+        }
+        
         loadJustifSwitchState();
+        loadLoansSwitchState();
       } else {
         btnAdmin.classList.add('hidden');
         switchContainer.classList.add('hidden');
+        
+        var loansSwitchContainerHide = document.getElementById('loans-switch-container');
+        if (loansSwitchContainerHide) {
+          loansSwitchContainerHide.classList.add('hidden');
+        }
       }
 
       // ========== BOTÓN CONSULTA ID ==========
@@ -3208,17 +2270,11 @@
           showWarning("No puedes realizar gestiones sindicales debido a que tu estado dentro de la organización es DESVINCULADO. Si crees que existe un error, comunícate con la directiva de la organización.");
           return;
         }
-        // Validar si el usuario es TESTING (acceso restringido a Mis Datos y SLIM Quest)
-        if (currentUserRole && currentUserRole.toUpperCase() === 'TESTING' &&
-          !['dashboard-view', 'profile-view', 'slim-quest-view', 'slim-quest-quiz-view', 'slim-quest-leaderboard-view', 'logout-view', 'login-view'].includes(viewId)) {
-          showWarning("Esta sección no está disponible para tu perfil de acceso.");
-          return;
-        }
         
-        ['login-view','dashboard-view','logout-view','profile-view','loans-view','justifications-view','appeals-view','attendance-records-view','permission-view','admin-panel-view','management-view','id-credential-view','slim-quest-view','slim-quest-quiz-view','slim-quest-leaderboard-view','calculator-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        ['login-view','dashboard-view','logout-view','profile-view','loans-view','justifications-view','appeals-view','attendance-records-view','permission-view','admin-panel-view','management-view','id-credential-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
         const view = document.getElementById(viewId);
         view.classList.remove('hidden');
-        if (['dashboard-view','profile-view','loans-view','justifications-view','appeals-view','attendance-records-view','permission-view','admin-panel-view','management-view','id-credential-view','slim-quest-view','slim-quest-quiz-view','slim-quest-leaderboard-view','calculator-view'].includes(viewId)) view.classList.add('flex');
+        if (['dashboard-view','profile-view','loans-view','justifications-view','appeals-view','attendance-records-view','permission-view','admin-panel-view','management-view','id-credential-view'].includes(viewId)) view.classList.add('flex');
       }
 
       function handleLogout() {
@@ -3270,23 +2326,34 @@
           showWarning("No puedes realizar gestiones sindicales debido a que tu estado dentro de la organización es DESVINCULADO. Si crees que existe un error, comunícate con la directiva de la organización.");
           return;
         }
-
-        // ========== VALIDACIÓN ROL TESTING ==========
-        const esTesting = (role === 'TESTING');
-        if (esTesting && module !== 'Mis Datos' && module !== 'MiProgreso') {
-          showWarning("Este módulo no está disponible para tu perfil de acceso. Solo puedes acceder a 'Mis Datos' y 'SLIM Quest'.");
-          return;
-        }
         
         if (module === 'Mis Datos') { 
            cargarMisDatos(); 
         } else if (module === 'RegistroAsistencia') { 
             loadAttendanceRecords(); 
         } else if (module === 'Prestamos') {
-           document.getElementById('loans-menu').classList.remove('hidden');
-           document.getElementById('loans-form').classList.add('hidden');
-           document.getElementById('loans-records').classList.add('hidden');
-           switchView('loans-view');
+           if (esAdmin) {
+              document.getElementById('loans-menu').classList.remove('hidden');
+              document.getElementById('loans-form').classList.add('hidden');
+              document.getElementById('loans-records').classList.add('hidden');
+              var loansSw = document.getElementById('loans-switch-container');
+              if (loansSw) { loansSw.classList.remove('hidden'); loansSw.classList.add('flex'); }
+              loadLoansSwitchState();
+              switchView('loans-view');
+           } else {
+              var loansSw2 = document.getElementById('loans-switch-container');
+              if (loansSw2) { loansSw2.classList.add('hidden'); loansSw2.classList.remove('flex'); }
+              google.script.run.withSuccessHandler(function(res) {
+                 if (res.habilitado) {
+                    document.getElementById('loans-menu').classList.remove('hidden');
+                    document.getElementById('loans-form').classList.add('hidden');
+                    document.getElementById('loans-records').classList.add('hidden');
+                    switchView('loans-view');
+                 } else {
+                    document.getElementById('loans-maintenance-modal').classList.remove('hidden');
+                 }
+              }).obtenerEstadoSwitchPrestamos();
+           }
         } else if (module === 'Justificaciones') {
            google.script.run.withSuccessHandler(res => {
                 if (res.habilitado) { 
@@ -3310,14 +2377,6 @@
            document.getElementById('id-credential-result').classList.add('hidden');
         } else if (module === 'GestionSocios') {
            loadManagementView();
-        } else if (module === 'ContratoColectivo') {
-           switchView('contrato-colectivo-view');
-        } else if (module === 'CalculadoraHE') {
-           iniciarCalculadora();
-           switchView('calculator-view');
-        } else if (module === 'MiProgreso') {
-           cargarSlimQuest();
-           switchView('slim-quest-view');
         } else {
            showConstruction(module);
         }
@@ -3997,8 +3056,29 @@
          toggleJustifTab('list');
          switchView('justifications-view');
       }
-      
-      function toggleJustifTab(tab) { 
+
+      // === FUNCIONES PRÉSTAMOS (CON SWITCH) ===
+      function loadLoansSwitchState() {
+         google.script.run.withSuccessHandler(function(res) {
+            var switchEl = document.getElementById('loans-switch');
+            if (switchEl) switchEl.checked = res.habilitado;
+         }).obtenerEstadoSwitchPrestamos();
+      }
+
+      function handleLoansSwitch() {
+         var switchEl = document.getElementById('loans-switch');
+         var estado = switchEl.checked;
+         google.script.run.withSuccessHandler(function(res) {
+            if (res.success) {
+               showSuccess(estado ? "Módulo de préstamos habilitado." : "Módulo de préstamos pausado por mantenimiento.");
+            } else {
+               showWarning("Error al actualizar el módulo de préstamos.");
+               switchEl.checked = !estado;
+            }
+         }).toggleSwitchPrestamos(estado);
+      }
+
+      function toggleJustifTab(tab) {
          const btnForm = document.getElementById('tab-justif-form'); 
          const btnList = document.getElementById('tab-justif-list'); 
          const divForm = document.getElementById('justif-form-content'); 
@@ -5200,549 +4280,6 @@ divForm.classList.add('flex');
          }).generarInformeAdministrador();
       }
 
-      function cargarSlimQuest() {
-        // Mostrar loader, ocultar contenido
-        document.getElementById('sq-loader').classList.remove('hidden');
-        document.getElementById('sq-content').classList.add('hidden');
-
-        google.script.run
-          .withSuccessHandler(function(res) {
-            document.getElementById('sq-loader').classList.add('hidden');
-
-            if (!res.success) {
-              // Si está desvinculado, mostrar mensaje especial
-              if (res.desvinculado) {
-                document.getElementById('sq-content').classList.remove('hidden');
-                document.getElementById('sq-grado-badge').innerText = res.grado || 'Aspirante';
-                document.getElementById('sq-grado-icon').innerText = '🔒';
-                document.getElementById('sq-grado-nombre').innerText = 'Participación suspendida';
-                document.getElementById('sq-xp-label').innerText = res.xp + ' XP acumulados';
-                document.getElementById('sq-xp-bar').style.width = '0%';
-                document.getElementById('sq-xp-siguiente').innerText = res.message;
-                document.getElementById('sq-stat-xp').innerText = res.xp;
-                document.getElementById('sq-stat-racha').innerText = '—';
-                document.getElementById('sq-stat-quizzes').innerText = '—';
-                document.getElementById('sq-quiz-card').style.pointerEvents = 'none';
-                document.getElementById('sq-quiz-card').style.opacity = '0.4';
-                document.getElementById('sq-logros-empty').classList.remove('hidden');
-              } else {
-                showWarning(res.message || 'Error al cargar SLIM Quest.');
-              }
-              return;
-            }
-
-            // ── Mostrar nivel secreto solo si el grado es Dirigente ──────────────
-            var tarjetaSecreta = document.getElementById('sq-nivel-secreto');
-            if (res.grado && res.grado.nombre === 'Dirigente') {
-              tarjetaSecreta.classList.remove('hidden');
-            } else {
-              tarjetaSecreta.classList.add('hidden');
-            }
-
-            // Poblar interfaz con datos reales
-            const grado = res.grado || {};
-            const sigGrado = res.gradoSiguiente;
-            const xpParaSig = res.xpParaSiguiente || 0;
-            const pct = sigGrado
-              ? Math.min(100, Math.round(((res.xp - grado.minXP) / (sigGrado.minXP - grado.minXP)) * 100))
-              : 100;
-
-            document.getElementById('sq-grado-badge').innerText = (grado.icono || '') + ' ' + (grado.nombre || 'Aspirante');
-            _currentGradoNombre = grado.nombre || 'Aspirante';
-            document.getElementById('sq-grado-icon').innerText = grado.icono || '🌱';
-            document.getElementById('sq-grado-nombre').innerText = grado.nombre || 'Aspirante';
-            document.getElementById('sq-xp-label').innerText = res.xp + ' XP';
-            document.getElementById('sq-xp-bar').style.width = pct + '%';
-            document.getElementById('sq-xp-siguiente').innerText = sigGrado
-              ? 'Faltan ' + xpParaSig + ' XP para ' + sigGrado.icono + ' ' + sigGrado.nombre
-              : '🏆 ¡Grado máximo alcanzado!';
-            document.getElementById('sq-stat-xp').innerText = res.xp;
-            document.getElementById('sq-stat-racha').innerText = res.racha || 0;
-            document.getElementById('sq-stat-quizzes').innerText = res.quizzesCompletados || 0;
-
-            // Estado del quiz diario
-            const hoyStr = new Date().toLocaleDateString('es-CL');
-            const quizHoy = res.quizHoy || '';
-            const yaJugoHoy = quizHoy === hoyStr;
-            const estadoQuiz = document.getElementById('sq-quiz-estado');
-            if (yaJugoHoy) {
-              estadoQuiz.innerText = '✓ Completado';
-              estadoQuiz.className = 'text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700';
-              document.getElementById('sq-quiz-card').style.opacity = '0.6';
-              document.getElementById('sq-quiz-card').style.pointerEvents = 'none';
-            } else {
-              estadoQuiz.innerText = '▶ Jugar';
-              estadoQuiz.className = 'text-xs font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700';
-            }
-
-            // Logros
-            const logros = res.logros || [];
-            const logrosCont = document.getElementById('sq-logros-container');
-            logrosCont.innerHTML = '';
-            if (logros.length === 0) {
-              document.getElementById('sq-logros-empty').classList.remove('hidden');
-            } else {
-              document.getElementById('sq-logros-empty').classList.add('hidden');
-              logros.forEach(function(l) {
-                const div = document.createElement('div');
-                div.className = 'flex flex-col items-center bg-white border border-slate-200 rounded-xl p-2 text-center';
-                div.innerHTML = '<span class="text-2xl mb-1">' + (l.icono || '🏅') + '</span>'
-                  + '<span class="text-[9px] text-slate-600 font-medium leading-tight">' + (l.nombre || '') + '</span>'
-                  + '<span class="text-[8px] text-slate-400 mt-0.5">' + (l.fecha || '') + '</span>';
-                logrosCont.appendChild(div);
-              });
-            }
-
-            document.getElementById('sq-content').classList.remove('hidden');
-          })
-          .withFailureHandler(function(err) {
-            document.getElementById('sq-loader').classList.add('hidden');
-            showWarning('Error al conectar con el servidor: ' + err.message);
-          })
-          .getProgresoSocio(currentRut);
-      }
-
-      // ─── Estado del quiz en memoria ──────────────────────────────────────────────
-      var _currentGradoNombre = 'Aspirante';
-      var _quizPreguntas   = [];
-      var _quizIndice      = 0;
-      var _quizCorrectas   = 0;
-      var _quizXPAcumulado = 0;
-      var _quizRespondida  = false;
-
-      function cargarLeaderboard() {
-        switchView('slim-quest-leaderboard-view');
-        document.getElementById('lb-loader').classList.remove('hidden');
-        document.getElementById('lb-content').classList.add('hidden');
-
-        google.script.run
-          .withSuccessHandler(function(res) {
-            document.getElementById('lb-loader').classList.add('hidden');
-
-            if (!res.success || !res.top10) {
-              showWarning(res.message || 'No se pudo cargar la clasificación.');
-              switchView('slim-quest-view');
-              return;
-            }
-
-            var lista  = document.getElementById('lb-lista');
-            var empty  = document.getElementById('lb-empty');
-            lista.innerHTML = '';
-
-            if (res.top10.length === 0) {
-              empty.classList.remove('hidden');
-            } else {
-              empty.classList.add('hidden');
-              var medallas = ['🥇','🥈','🥉'];
-              var colores  = {
-                'Aspirante' :'bg-green-100 text-green-700',
-                'Aprendiz'  :'bg-cyan-100 text-cyan-700',
-                'Trabajador':'bg-blue-100 text-blue-700',
-                'Defensor'  :'bg-purple-100 text-purple-700',
-                'Negociador':'bg-orange-100 text-orange-700',
-                'Dirigente' :'bg-amber-100 text-amber-700'
-              };
-
-              res.top10.forEach(function(s) {
-                var medal      = medallas[s.posicion - 1] || '';
-                var xpFmt      = s.xp.toLocaleString('es-CL');
-                var colorGrado = colores[s.grado.nombre] || 'bg-slate-100 text-slate-600';
-                var fila       = document.createElement('div');
-
-                fila.className = 'flex items-center gap-3 px-4 py-3 transition ' +
-                  (s.esMio ? 'bg-indigo-50 border-l-4 border-indigo-400' : 'hover:bg-slate-50');
-
-                fila.innerHTML =
-                  '<div class="w-7 text-center flex-shrink-0">' +
-                    (medal
-                      ? '<span class="text-xl leading-none">' + medal + '</span>'
-                      : '<span class="text-sm font-bold text-slate-400">#' + s.posicion + '</span>') +
-                  '</div>' +
-                  '<div class="flex-1 min-w-0">' +
-                    '<div class="text-sm font-bold text-slate-800 truncate">' +
-                      (s.esMio ? '⭐ Tú' : s.nombre) +
-                    '</div>' +
-                    '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 ' + colorGrado + '">' +
-                      s.grado.icono + ' ' + s.grado.nombre +
-                    '</span>' +
-                  '</div>' +
-                  '<div class="text-right flex-shrink-0">' +
-                    '<div class="text-sm font-bold text-slate-800">' + xpFmt + '</div>' +
-                    '<div class="text-[10px] text-slate-400 font-medium">XP</div>' +
-                  '</div>';
-
-                lista.appendChild(fila);
-              });
-            }
-
-            // Mostrar posición propia
-            var miPos = res.miPosicion;
-            var miDiv = document.getElementById('lb-mi-posicion');
-            if (miPos) {
-              document.getElementById('lb-mi-num').innerText     = '#' + miPos.posicion;
-              document.getElementById('lb-mi-grado-xp').innerText =
-                miPos.grado.icono + ' ' + miPos.grado.nombre +
-                ' · ' + miPos.xp.toLocaleString('es-CL') + ' XP';
-              miDiv.classList.remove('hidden');
-            } else {
-              miDiv.classList.add('hidden');
-            }
-
-            document.getElementById('lb-content').classList.remove('hidden');
-          })
-          .withFailureHandler(function(err) {
-            document.getElementById('lb-loader').classList.add('hidden');
-            showWarning('Error: ' + (err.message || err));
-            switchView('slim-quest-view');
-          })
-          .getLeaderboard(currentRut);
-      }
-
-      function iniciarQuizDiario() {
-        switchView('slim-quest-quiz-view');
-        document.getElementById('quiz-loader').classList.remove('hidden');
-        document.getElementById('quiz-contenedor').classList.add('hidden');
-
-        google.script.run
-          .withSuccessHandler(function(res) {
-            document.getElementById('quiz-loader').classList.add('hidden');
-            if (!res.success || !res.preguntas || res.preguntas.length === 0) {
-              showWarning(res.message || 'No hay preguntas disponibles en este momento.');
-              switchView('slim-quest-view');
-              return;
-            }
-            _quizPreguntas   = res.preguntas;
-            _quizIndice      = 0;
-            _quizCorrectas   = 0;
-            _quizXPAcumulado = 0;
-            mostrarPregunta(0);
-          })
-          .withFailureHandler(function(err) {
-            document.getElementById('quiz-loader').classList.add('hidden');
-            showWarning('Error al cargar preguntas: ' + err.message);
-            switchView('slim-quest-view');
-          })
-          .obtenerPreguntasQuiz(currentRut, 5);
-      }
-
-      // ==========================================
-      // MODAL DE INFORMACIÓN DE NIVEL — SLIM QUEST
-      // ==========================================
-      function mostrarInfoGrado() {
-        var GRADOS_INFO = {
-          'Aspirante':  { headerBg:'#15803d', color:'#22c55e', badgeBg:'#dcfce7', badgeText:'#14532d', icono:'🌱', nivel:'1 de 6', xpMin:'0', xpMax:'1.500', quote:'Cada gran viaje comienza con el primer paso. ¡Has dado el tuyo!', nextIcono:'⚙️', nextNombre:'Aprendiz', nextXp:'1.501', msg:'Tu participación en SLIM Quest ha comenzado. Cada quiz diario te acerca más a convertirte en un referente sindical de la organización.' },
-          'Aprendiz':   { headerBg:'#1d4ed8', color:'#3b82f6', badgeBg:'#dbeafe', badgeText:'#1e3a8a', icono:'⚙️', nivel:'2 de 6', xpMin:'1.501', xpMax:'4.500', quote:'El conocimiento es la herramienta más poderosa del movimiento sindical.', nextIcono:'🔩', nextNombre:'Trabajador', nextXp:'4.501', msg:'Tu constancia está dando frutos. Ya dominas los fundamentos sindicales y estás construyendo una base sólida de conocimiento.' },
-          'Trabajador': { headerBg:'#c2410c', color:'#f97316', badgeBg:'#ffedd5', badgeText:'#7c2d12', icono:'🔩', nivel:'3 de 6', xpMin:'4.501', xpMax:'10.000', quote:'El trabajo organizado mueve montañas. Tú eres la fuerza del sindicato.', nextIcono:'🛡️', nextNombre:'Defensor', nextXp:'10.001', msg:'Tu dedicación refleja los valores fundamentales de la organización. Eres un ejemplo de compromiso para tus compañeros.' },
-          'Defensor':   { headerBg:'#6d28d9', color:'#8b5cf6', badgeBg:'#ede9fe', badgeText:'#4c1d95', icono:'🛡️', nivel:'4 de 6', xpMin:'10.001', xpMax:'18.000', quote:'Defender los derechos colectivos es el corazón del sindicalismo.', nextIcono:'⚖️', nextNombre:'Negociador', nextXp:'18.001', msg:'Has demostrado un compromiso profundo con los valores y derechos de la organización. Eres un pilar fundamental del Sindicato SLIM N°3.' },
-          'Negociador': { headerBg:'#b45309', color:'#d97706', badgeBg:'#fef3c7', badgeText:'#78350f', icono:'⚖️', nivel:'5 de 6', xpMin:'18.001', xpMax:'30.000', quote:'La negociación efectiva nace del conocimiento profundo y la preparación incansable.', nextIcono:'🏆', nextNombre:'Dirigente', nextXp:'30.001', msg:'Tu nivel de preparación y conocimiento te posiciona entre los socios más destacados. Tu voz tiene un peso especial en la organización.' },
-          'Dirigente':  { headerBg:'#92400e', color:'#f59e0b', badgeBg:'#fffbeb', badgeText:'#78350f', icono:'🏆', nivel:'6 de 6', xpMin:'30.001', xpMax:'∞',     quote:'El verdadero líder no es quien dirige, sino quien inspira y transforma.', nextIcono: null, nextNombre: null, nextXp: null, msg:'Has alcanzado el nivel máximo de SLIM Quest. Tu trayectoria de aprendizaje y dedicación te convierten en uno de los referentes más importantes del Sindicato SLIM N°3.' }
-        };
-
-        var g = GRADOS_INFO[_currentGradoNombre] || GRADOS_INFO['Aspirante'];
-
-        var nextSection = g.nextNombre
-          ? '<div style="background:' + g.badgeBg + ';border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid ' + g.color + '44;">' +
-              '<p style="font-size:10px;font-weight:700;color:' + g.badgeText + ';text-transform:uppercase;letter-spacing:0.5px;margin:0 0 5px;">Próximo nivel</p>' +
-              '<p style="font-size:13px;color:' + g.badgeText + ';margin:0;font-weight:600;">' + g.nextIcono + ' ' + g.nextNombre + ' · desde ' + g.nextXp + ' XP</p>' +
-            '</div>'
-          : '<div style="background:#fef3c7;border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid #fbbf2444;">' +
-              '<p style="font-size:10px;font-weight:700;color:#78350f;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 5px;">Nivel máximo</p>' +
-              '<p style="font-size:13px;color:#78350f;margin:0;font-weight:600;">🏅 Has completado todos los niveles de SLIM Quest</p>' +
-            '</div>';
-
-        var xpLabel = g.nextNombre
-          ? 'Rango XP: ' + g.xpMin + ' – ' + g.xpMax
-          : 'Rango XP: ' + g.xpMin + ' en adelante';
-
-        var modalHTML =
-          '<div id="grado-info-modal" onclick="if(event.target===this)cerrarInfoGrado()" ' +
-            'style="position:fixed;inset:0;background:rgba(15,23,42,0.7);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999;">' +
-            '<div style="background:#fff;width:100%;max-width:360px;border-radius:20px;overflow:hidden;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.3);">' +
-
-              // HEADER
-              '<div style="background:' + g.headerBg + ';padding:28px 20px 22px;text-align:center;flex-shrink:0;">' +
-                '<div style="font-size:52px;line-height:1;margin-bottom:8px;">' + g.icono + '</div>' +
-                '<div style="display:inline-block;background:rgba(255,255,255,0.2);color:#fff;font-size:10px;padding:3px 10px;border-radius:999px;margin-bottom:6px;">Nivel ' + g.nivel + '</div>' +
-                '<h2 style="margin:0 0 2px;font-size:20px;font-weight:700;color:#fff;">' + _currentGradoNombre + '</h2>' +
-                '<p style="margin:0;font-size:11px;color:rgba(255,255,255,0.7);">' + xpLabel + ' XP</p>' +
-              '</div>' +
-
-              // BODY
-              '<div style="padding:20px;overflow-y:auto;flex-grow:1;">' +
-                '<p style="font-size:13px;color:#475569;line-height:1.7;margin-bottom:16px;">' + g.msg + '</p>' +
-
-                // Cita
-                '<div style="border-left:3px solid ' + g.color + ';background:' + g.badgeBg + ';border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px;">' +
-                  '<p style="font-size:12px;font-style:italic;color:' + g.badgeText + ';line-height:1.6;margin:0;">"' + g.quote + '"</p>' +
-                '</div>' +
-
-                nextSection +
-
-                // Botón cerrar
-                '<button onclick="cerrarInfoGrado()" ' +
-                  'style="width:100%;padding:13px;border-radius:12px;background:' + g.headerBg + ';color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;">' +
-                  'Entendido' +
-                '</button>' +
-              '</div>' +
-            '</div>' +
-          '</div>';
-
-        var existente = document.getElementById('grado-info-modal');
-        if (existente) existente.remove();
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-      }
-
-      function cerrarInfoGrado() {
-        var m = document.getElementById('grado-info-modal');
-        if (m) m.remove();
-      }
-
-      // ─── variable de modo secreto ────────────────────────────────────────────────
-      var _quizModoSecreto = false;
-
-      function iniciarQuizSecreto() {
-        _quizModoSecreto = true;
-        switchView('slim-quest-quiz-view');
-
-        // Aplicar tema oscuro/dorado al header del quiz
-        var header = document.querySelector('#slim-quest-quiz-view > div.bg-slate-900');
-        if (header) {
-          header.style.background = 'linear-gradient(135deg,#1e1b4b 0%,#312e81 100%)';
-        }
-        document.getElementById('quiz-progreso-bar').style.background =
-          'linear-gradient(90deg,#f5d060,#a78bfa)';
-
-        document.getElementById('quiz-loader').classList.remove('hidden');
-        document.getElementById('quiz-contenedor').classList.add('hidden');
-
-        // Cambiar el título del header
-        var titulo = document.querySelector('#slim-quest-quiz-view h2');
-        if (titulo) titulo.innerText = '🔐 Nivel Secreto';
-
-        google.script.run
-          .withSuccessHandler(function(res) {
-            document.getElementById('quiz-loader').classList.add('hidden');
-            if (!res.success) {
-              if (res.accesoDenegado) {
-                Swal.fire({
-                  icon: 'info',
-                  title: 'Nivel bloqueado',
-                  text: res.message,
-                  confirmButtonColor: '#7c3aed'
-                });
-              } else {
-                showWarning(res.message || 'No hay preguntas disponibles.');
-              }
-              // Restaurar tema normal
-              _quizModoSecreto = false;
-              var hdr = document.querySelector('#slim-quest-quiz-view > div.bg-slate-900');
-              if (hdr) hdr.style.background = '';
-              switchView('slim-quest-view');
-              return;
-            }
-            _quizPreguntas   = res.preguntas;
-            _quizIndice      = 0;
-            _quizCorrectas   = 0;
-            _quizXPAcumulado = 0;
-            mostrarPregunta(0);
-          })
-          .withFailureHandler(function(err) {
-            document.getElementById('quiz-loader').classList.add('hidden');
-            _quizModoSecreto = false;
-            showWarning('Error al cargar el nivel secreto: ' + err.message);
-            switchView('slim-quest-view');
-          })
-          .obtenerPreguntasSecreto(currentRut, 5);
-      }
-
-      function mostrarPregunta(indice) {
-        var p      = _quizPreguntas[indice];
-        var total  = _quizPreguntas.length;
-        _quizRespondida = false;
-
-        // Progreso
-        document.getElementById('quiz-progreso-label').innerText = (indice + 1) + ' / ' + total;
-        document.getElementById('quiz-progreso-bar').style.width = Math.round((indice / total) * 100) + '%';
-
-        // Categoría y nivel
-        var coloresCat = {
-          PROTOCOLO:   'bg-purple-100 text-purple-800',
-          NEGOCIACION: 'bg-red-100 text-red-800',
-          CONTRATO:    'bg-green-100 text-green-800',
-          DERECHOS:    'bg-blue-100 text-blue-800',
-          SINDICATO:   'bg-amber-100 text-amber-800'
-        };
-        var coloresNivel = {
-          BASICO:      'bg-slate-100 text-slate-600',
-          INTERMEDIO:  'bg-orange-100 text-orange-700',
-          AVANZADO:    'bg-red-100 text-red-700'
-        };
-        var cat   = (p.categoria || 'PROTOCOLO').toUpperCase();
-        var nivel = (p.nivel || 'BASICO').toUpperCase();
-        document.getElementById('quiz-meta').innerHTML =
-          '<span class="text-xs font-bold px-2 py-1 rounded-full ' + (coloresCat[cat]   || 'bg-slate-100 text-slate-600') + '">' + cat   + '</span>' +
-          '<span class="text-xs font-bold px-2 py-1 rounded-full ' + (coloresNivel[nivel] || 'bg-slate-100 text-slate-600') + '">' + nivel + '</span>' +
-          '<span class="text-xs font-bold px-2 py-1 rounded-full bg-purple-50 text-purple-700">+' + p.xp + ' XP</span>';
-
-        // Pregunta
-        document.getElementById('quiz-pregunta-texto').innerText = p.pregunta;
-
-        // Opciones
-        var letras  = ['A', 'B', 'C', 'D'];
-        var optsDiv = document.getElementById('quiz-opciones');
-        optsDiv.innerHTML = '';
-        letras.forEach(function(letra) {
-          var texto = p.opciones[letra];
-          if (!texto) return;
-          var btn = document.createElement('button');
-          btn.id        = 'opt-' + letra;
-          btn.className = 'w-full text-left p-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 font-medium hover:border-purple-400 hover:bg-purple-50 active:scale-[0.98] transition';
-          btn.innerHTML = '<span class="inline-block w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-xs font-bold text-center leading-6 mr-2">' + letra + '</span>' + texto;
-          btn.onclick   = function() { responderPregunta(letra); };
-          optsDiv.appendChild(btn);
-        });
-
-        // Ocultar explicación y botón
-        document.getElementById('quiz-explicacion').classList.add('hidden');
-        document.getElementById('quiz-btn-siguiente').classList.add('hidden');
-        document.getElementById('quiz-xp-instant').innerText = '';
-
-        document.getElementById('quiz-contenedor').classList.remove('hidden');
-      }
-
-      function responderPregunta(letraElegida) {
-        if (_quizRespondida) return;
-        _quizRespondida = true;
-
-        var p         = _quizPreguntas[_quizIndice];
-        var correcta  = p.respuesta.toUpperCase().trim();
-        var esCorrecta = letraElegida === correcta;
-
-        // Colorear opciones
-        ['A','B','C','D'].forEach(function(letra) {
-          var btn = document.getElementById('opt-' + letra);
-          if (!btn) return;
-          btn.onclick = null;
-          btn.classList.remove('hover:border-purple-400','hover:bg-purple-50');
-          if (letra === correcta) {
-            btn.classList.add('border-green-500', 'bg-green-50', 'text-green-800');
-            btn.querySelector('span').className = 'inline-block w-6 h-6 rounded-full bg-green-500 text-white text-xs font-bold text-center leading-6 mr-2';
-          } else if (letra === letraElegida && !esCorrecta) {
-            btn.classList.add('border-red-400', 'bg-red-50', 'text-red-700');
-            btn.querySelector('span').className = 'inline-block w-6 h-6 rounded-full bg-red-400 text-white text-xs font-bold text-center leading-6 mr-2';
-          } else {
-            btn.classList.add('opacity-50');
-          }
-        });
-
-        // XP ganado
-        var xpGanado = esCorrecta ? p.xp : 0;
-        if (esCorrecta) {
-          _quizCorrectas++;
-          _quizXPAcumulado += xpGanado;
-          document.getElementById('quiz-xp-instant').innerText = '+' + xpGanado + ' XP ✓';
-        } else {
-          document.getElementById('quiz-xp-instant').innerText = '0 XP ✗';
-        }
-
-        // Explicación
-        var expl = document.getElementById('quiz-explicacion');
-        expl.className = esCorrecta
-          ? 'rounded-xl p-4 border-l-4 border-green-500 bg-green-50'
-          : 'rounded-xl p-4 border-l-4 border-red-400 bg-red-50';
-        document.getElementById('quiz-expl-titulo').innerText  = esCorrecta ? '✓ ¡Correcto!' : '✗ Respuesta incorrecta';
-        document.getElementById('quiz-expl-titulo').className  = esCorrecta ? 'text-xs font-bold mb-1 text-green-700' : 'text-xs font-bold mb-1 text-red-700';
-        document.getElementById('quiz-expl-texto').innerText   = p.explicacion || '';
-        document.getElementById('quiz-expl-fuente').innerText  = p.fuente ? 'Fuente: ' + p.fuente : '';
-        expl.classList.remove('hidden');
-
-        // Botón siguiente o finalizar
-        var btnSig = document.getElementById('quiz-btn-siguiente');
-        btnSig.classList.remove('hidden');
-        var esUltima = (_quizIndice === _quizPreguntas.length - 1);
-        btnSig.innerText = esUltima ? 'Ver resultados →' : 'Siguiente →';
-      }
-
-      function siguientePregunta() {
-        var esUltima = (_quizIndice === _quizPreguntas.length - 1);
-        if (esUltima) {
-          finalizarQuiz();
-        } else {
-          _quizIndice++;
-          mostrarPregunta(_quizIndice);
-        }
-      }
-
-      function finalizarQuiz() {
-        // Actualizar barra al 100%
-        document.getElementById('quiz-progreso-bar').style.width = '100%';
-        document.getElementById('quiz-progreso-label').innerText = '✓ Completado';
-
-        // Enviar resultado al backend
-        google.script.run
-          .withSuccessHandler(function(res) {
-            if (!res.success) {
-              showWarning(res.message || 'Error al guardar el resultado.');
-              switchView('slim-quest-view');
-              cargarSlimQuest();
-              return;
-            }
-
-            // Construir mensaje de resultados
-            var estrellas = '';
-            if (_quizCorrectas === 5) estrellas = '🏆 ¡Quiz perfecto!';
-            else if (_quizCorrectas >= 4) estrellas = '⭐ ¡Muy bien!';
-            else if (_quizCorrectas >= 3) estrellas = '👍 ¡Bien!';
-            else estrellas = '📚 Sigue practicando';
-
-            var msgLogros = '';
-            if (res.logrosNuevos && res.logrosNuevos.length > 0) {
-              msgLogros = '<br><br>🏅 <b>Logros desbloqueados:</b><br>' +
-                res.logrosNuevos.map(function(l){ return l.icono + ' ' + l.nombre; }).join('<br>');
-            }
-
-            var msgBonus = res.xpBonoRacha > 0
-            ? '<br><br>🔥 <b>Bonus día ' + res.nuevaRacha + ':</b> +' + res.xpBonoRacha + ' XP extra'
-            : '';
-
-            var msgGrado = res.subioGrado
-              ? '<br><br>🎉 <b>¡Subiste de grado!</b><br>' + res.gradoAnterior + ' → ' + res.grado.icono + ' ' + res.grado.nombre
-              : '';
-
-            Swal.fire({
-              icon:  _quizCorrectas >= 3 ? 'success' : 'info',
-              title: estrellas,
-              html:  '<b>' + _quizCorrectas + ' / ' + _quizPreguntas.length + '</b> respuestas correctas<br>' +
-                    '<span style="color:#7c3aed;font-weight:bold;">+' + res.xpGanado + ' XP ganados</span>' +
-                    msgBonus + msgGrado + msgLogros,
-              confirmButtonText: 'Ver mi progreso',
-              confirmButtonColor: '#7c3aed'
-            }).then(function() {
-              switchView('slim-quest-view');
-              cargarSlimQuest();
-            });
-          })
-          .withFailureHandler(function() {
-            showWarning('Error de conexión al guardar el quiz.');
-            switchView('slim-quest-view');
-          })
-          .registrarResultadoQuiz(currentRut, _quizCorrectas, _quizXPAcumulado);
-      }
-
-      function salirDelQuiz() {
-        _quizPreguntas = [];
-        // Restaurar header si estaba en modo secreto
-        if (_quizModoSecreto) {
-          var hdr = document.querySelector('#slim-quest-quiz-view > div.bg-slate-900');
-          if (hdr) hdr.style.background = '';
-          var titulo = document.querySelector('#slim-quest-quiz-view h2');
-          if (titulo) titulo.innerText = 'Quiz Sindical Diario';
-          document.getElementById('quiz-progreso-bar').style.background = '';
-          _quizModoSecreto = false;
-        }
-        switchView('slim-quest-view');
-      }
-
       // === FUNCIONES GESTIÓN SOCIOS ===
       function loadManagementView() {
          switchView('management-view');
@@ -6615,131 +5152,6 @@ divForm.classList.add('flex');
             console.error('Error:', error);
           })
           .consultarIdCredencialBackend(currentRut, rutBuscar);
-      }
-
-      function ccToggle(id) {
-        const body    = document.getElementById(id);
-        const chevron = document.getElementById('cc-chev-' + id);
-        const isOpen  = body.classList.contains('open');
-        document.querySelectorAll('.cc-accordion-body').forEach(b => b.classList.remove('open'));
-        document.querySelectorAll('.cc-accordion-chevron').forEach(c => c.classList.remove('open'));
-        if (!isOpen) {
-          body.classList.add('open');
-          chevron.classList.add('open');
-        }
-      }
-
-      // =============================================
-      // CALCULADORA DE HORAS EXTRAORDINARIAS CC 2026
-      // =============================================
-      let _calcCargo = null;
-
-      function iniciarCalculadora() {
-        _calcCargo = null;
-        _calcModoGuardia = 'simple';
-        ['btn-cargo-limpieza','btn-cargo-guardia'].forEach(id => {
-          const btn = document.getElementById(id);
-          btn.classList.remove('border-emerald-500','bg-emerald-50');
-          btn.classList.add('border-slate-200','bg-white');
-          const icon = btn.querySelector('.calc-cargo-icon');
-          if (icon) { icon.classList.remove('bg-emerald-100'); icon.classList.add('bg-slate-100'); }
-          const iconSpan = btn.querySelector('.calc-cargo-icon-span');
-          if (iconSpan) { iconSpan.classList.remove('text-emerald-600'); iconSpan.classList.add('text-slate-500'); }
-        });
-        document.getElementById('calc-form-limpieza').classList.add('hidden');
-        document.getElementById('calc-form-guardia').classList.add('hidden');
-        document.getElementById('calc-result').classList.add('hidden');
-        ['calc-imponible-limpieza','calc-horas-limpieza','calc-total-guardia-simple','calc-horas-guardia',
-         'calc-g-sueldo','calc-g-grat','calc-g-asistencia','calc-g-incentivo',
-         'calc-g-noche','calc-g-colacion','calc-g-movilizacion','calc-g-otros'].forEach(id => {
-          const el = document.getElementById(id); if (el) el.value = '';
-        });
-        const prev = document.getElementById('calc-g-total-preview');
-        if (prev) prev.textContent = '$0';
-        const jL = document.getElementById('calc-jornada-limpieza'); if (jL) jL.value = '44';
-        const jG = document.getElementById('calc-jornada-guardia'); if (jG) jG.value = '44';
-        setModoGuardia('simple');
-      }
-
-      function seleccionarCargo(cargo) {
-        _calcCargo = cargo;
-        ['limpieza','guardia'].forEach(c => {
-          const btn = document.getElementById('btn-cargo-' + c);
-          btn.classList.remove('border-emerald-500','bg-emerald-50');
-          btn.classList.add('border-slate-200','bg-white');
-          const icon = btn.querySelector('.calc-cargo-icon');
-          if (icon) { icon.classList.remove('bg-emerald-100'); icon.classList.add('bg-slate-100'); }
-          const iconSpan = btn.querySelector('.calc-cargo-icon-span');
-          if (iconSpan) { iconSpan.classList.remove('text-emerald-600'); iconSpan.classList.add('text-slate-500'); }
-        });
-        const active = document.getElementById('btn-cargo-' + cargo);
-        active.classList.add('border-emerald-500','bg-emerald-50');
-        active.classList.remove('border-slate-200','bg-white');
-        const aIcon = active.querySelector('.calc-cargo-icon');
-        if (aIcon) { aIcon.classList.add('bg-emerald-100'); aIcon.classList.remove('bg-slate-100'); }
-        const aSpan = active.querySelector('.calc-cargo-icon-span');
-        if (aSpan) { aSpan.classList.add('text-emerald-600'); aSpan.classList.remove('text-slate-500'); }
-        document.getElementById('calc-form-limpieza').classList.toggle('hidden', cargo !== 'limpieza');
-        document.getElementById('calc-form-guardia').classList.toggle('hidden', cargo !== 'guardia');
-        document.getElementById('calc-result').classList.add('hidden');
-        setTimeout(() => {
-          const formEl = document.getElementById('calc-form-' + cargo);
-          if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-      }
-
-      function calcFormatCLP(input) {
-        let raw = input.value.replace(/\D/g, '');
-        if (raw === '') { input.value = ''; return; }
-        input.value = parseInt(raw, 10).toLocaleString('es-CL');
-      }
-
-      function calcParseCLP(str) {
-        if (!str) return 0;
-        return parseInt(String(str).replace(/\./g,'').replace(/,/g,'').replace(/\s/g,''), 10) || 0;
-      }
-
-      function calcularHE(cargo) {
-        let base = 0, jornada = 0, numHoras = 0;
-        if (cargo === 'limpieza') {
-          base     = calcParseCLP(document.getElementById('calc-imponible-limpieza').value);
-          jornada  = parseFloat(document.getElementById('calc-jornada-limpieza').value) || 45;
-          numHoras = parseFloat(document.getElementById('calc-horas-limpieza').value) || 0;
-          if (!base)     { showWarning('Ingresa tu Total Imponible mensual.'); return; }
-          if (!numHoras) { showWarning('Ingresa el número de horas extra a calcular.'); return; }
-        } else {
-          base = calcParseCLP(document.getElementById('calc-total-guardia-simple').value);
-          jornada  = parseFloat(document.getElementById('calc-jornada-guardia').value) || 45;
-          numHoras = parseFloat(document.getElementById('calc-horas-guardia').value) || 0;
-          if (!base)     { showWarning('Ingresa el Total de Haberes mensual.'); return; }
-          if (!numHoras) { showWarning('Ingresa el número de horas extra a calcular.'); return; }
-        }
-        const horasMes       = jornada * 4.333;
-        const valorHoraNormal = base / horasMes;
-        const valorHoraExtra  = valorHoraNormal * 1.5;
-        const totalAPagar     = valorHoraExtra * numHoras;
-        const fmt = n => Math.round(n).toLocaleString('es-CL');
-        const cargoLabel = cargo === 'limpieza' ? 'Limpieza / Aseo' : 'Guardia de Seguridad';
-        const nota = cargo === 'limpieza'
-          ? 'Base: Total Imponible (Sueldo Base + Gratificación + Bonos imponibles). Recargo 50% según Cláusula Cuarta del CC 2026.'
-          : 'Base: TOTAL de Haberes (incluye colación, movilización y todos los bonos). Según Cláusula Cuarta del CC 2026.';
-        document.getElementById('calc-result-cargo').textContent      = cargoLabel;
-        document.getElementById('calc-result-base').textContent       = '$' + fmt(base);
-        document.getElementById('calc-result-horas-mes').textContent  = horasMes.toFixed(1) + ' hrs (promedio anual)';
-        document.getElementById('calc-result-hora-normal').textContent = '$' + fmt(valorHoraNormal);
-        document.getElementById('calc-result-hora-extra').textContent  = '$' + fmt(valorHoraExtra);
-        document.getElementById('calc-result-num-horas').textContent   = numHoras + (numHoras === 1 ? ' hora extra' : ' horas extra');
-        document.getElementById('calc-result-total').textContent       = '$' + fmt(totalAPagar);
-        document.getElementById('calc-result-nota').textContent        = nota;
-        const resultEl = document.getElementById('calc-result');
-        resultEl.classList.remove('hidden');
-        setTimeout(() => resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-      }
-
-      function reiniciarCalculadora() {
-        iniciarCalculadora();
-        const body = document.querySelector('#calculator-view .flex-grow');
-        if (body) body.scrollTop = 0;
       }
 
     </script>
