@@ -1,7 +1,6 @@
 /**
  * Servir HTML
  */
-// REEMPLAZAR CON ESTO:
 function doGet(e) {
   // CASO 1: Checkin de punto de control (QR de asamblea)
   // Detecta parámetro 'control' o acción 'checkin'
@@ -42,7 +41,8 @@ const CONFIG = {
     PRESTAMOS: "1h-_sJD4rOCuMjlfSouP7a6gfoodHyzI4MOBRUyOW5XU",
     PERMISOS_MEDICOS: "1VYfm7cOgL3mVfVoI8DubIm8WG2srzQw9a6DtIEs3UMM",
     CREDENCIALES: "1HVyPxdYKuvIybeOCAPwAJaVHwlxEuOik4YW0XOXBE5o",
-    ASISTENCIA: "1SRQ8Mlc6bBdb0mitAfn4I-EUAS4BOrZRbqS9YAmg3Sk"
+    ASISTENCIA: "1SRQ8Mlc6bBdb0mitAfn4I-EUAS4BOrZRbqS9YAmg3Sk",
+    GAMIFICACION: "1SHDIhGv6XOc30Epm4vdusp3QGVD-pWzhIwzeD6iqbXQ"
   },
   HOJAS: {
     USUARIOS: "BD_SLIMAPP",
@@ -55,14 +55,17 @@ const CONFIG = {
     CREDENCIALES: "IMPRESION",
     HISTORIAL_CREDENCIALES: "HISTORIAL_CREDENCIALES",
     ASISTENCIA: "BD_ASISTENCIA",
-    PUNTOS_CONTROL: "PUNTOS_CONTROL"
+    PUNTOS_CONTROL: "PUNTOS_CONTROL",
+    GAMIFICACION: "BD_GAMIFICACION",
+    BANCO_PREGUNTAS: "BANCO_PREGUNTAS"
   },
   CARPETAS: {
     JUSTIFICACIONES: "1UD9hQz1FuacSb3QYrahRl7IfvlpKn8v6",
     APELACIONES_COMPROBANTES: "15BmK5pf5Txrxdzdrny23S5q35NDxLy4P",
     APELACIONES_LIQUIDACIONES: "1dR7fM6TW99tunNaMZliyvXc-L23nHKVY",
     APELACIONES_DEVOLUCIONES: "1LGLKA3fiCJXf2ouIqlxq3jk_ZSxI3IyM",
-    PERMISOS_MEDICOS: "1nCYxD5sJLszBBA6s2DquGW8vlKGZp4ty"
+    PERMISOS_MEDICOS: "1nCYxD5sJLszBBA6s2DquGW8vlKGZp4ty",
+    VESTUARIO_DOCS: "1A4PVsIn8ndNMXdqnO9GZCovjtNdfr0BI"
   },
   CORREOS: {
     REPRESENTANTE_LEGAL: "juancarlos.pacheco@cl.issworld.com"
@@ -89,7 +92,13 @@ const CONFIG = {
       BANCO: 17,
       TIPO_CUENTA: 18,
       NUMERO_CUENTA: 19,
-      ESTADO_NEG_COLECT: 20
+      ESTADO_NEG_COLECT: 20,
+      TALLA_POLERA: 21,
+      TALLA_POLAR: 22,
+      TALLA_PANTALON: 23,
+      TALLA_CALZADO: 24,
+      CALZADO_ESPECIAL: 25,
+      URL_CERT_PIE_DIABETICO: 26
     },
     JUSTIFICACIONES: {
       ID: 0,
@@ -125,7 +134,9 @@ const CONFIG = {
       GESTION: 13,
       NOMBRE_DIRIGENTE: 14,
       CORREO_DIRIGENTE: 15,
-      URL_COMPROBANTE_DEVOLUCION: 16
+      URL_COMPROBANTE_DEVOLUCION: 16,
+      PERMISO_DEVOLUCION: 17,
+      LOG_PERMISOS: 18
     },
     PRESTAMOS: {
       ID: 0,
@@ -160,7 +171,37 @@ const CONFIG = {
       NOTIFICADO_REP_LEGAL: 11,
       GESTION: 12,
       NOMBRE_DIRIGENTE: 13,
-      CORREO_DIRIGENTE: 14
+      CORREO_DIRIGENTE: 14,
+      NOTIFICADO_SOCIO: 15
+    },
+    GAMIFICACION: {
+      RUT: 0,
+      NOMBRE: 1,
+      XP_TOTAL: 2,
+      GRADO: 3,
+      LOGROS: 4,
+      RACHA_ACTUAL: 5,
+      RACHA_MAX: 6,
+      ULTIMA_ACTIVIDAD: 7,
+      QUIZ_ULTIMO_DIA: 8,
+      QUIZZES_COMPLETADOS: 9,
+      ESTADO: 10,
+      QUIZZES_PERFECTOS: 11
+    },
+    BANCO_PREGUNTAS: {
+      ID: 0,
+      CATEGORIA: 1,
+      NIVEL: 2,
+      PREGUNTA: 3,
+      OPCION_A: 4,
+      OPCION_B: 5,
+      OPCION_C: 6,
+      OPCION_D: 7,
+      RESPUESTA: 8,
+      EXPLICACION: 9,
+      XP: 10,
+      ACTIVA: 11,
+      FUENTE: 12
     }
   }
 };
@@ -553,14 +594,127 @@ function generarAlertaPermisos(validacionCorreos, resultadoSubida) {
 }
 
 /**
+ * Guarda los datos de vestuario del usuario en BD_SLIMAPP.
+ * Si calzadoEspecial = "SI" y se provee archivo, sube a Drive y guarda URL.
+ * @param {string} rutInput - RUT del usuario
+ * @param {Object} datosVestuario - { tallaPolera, tallaPolar, tallaPantalon, tallaCalzado,
+ *                                    calzadoEspecial, urlActual, archivo: {base64, mimeType, fileName} }
+ * @returns {Object} { success, message, urlCert }
+ */
+function guardarDatosVestuario(rutInput, datosVestuario) {
+  var lock = LockService.getScriptLock();
+  if (lock.tryLock(30000)) {
+    try {
+      const sheet = getSheet('USUARIOS', 'USUARIOS');
+      const data = sheet.getDataRange().getValues();
+      const rutLimpioInput = cleanRut(rutInput);
+      const COL = CONFIG.COLUMNAS.USUARIOS;
+
+      // ── Validar tallas obligatorias ──────────────────────────────────────
+      const tallasValidas = ['XS','S','M','L','XL','XXL','XXXL'];
+      const numerosValidos = ['32','34','36','38','40','42','44','46','48',
+                              '50','52','54','56','58','60','62','64','66'];
+
+      if (datosVestuario.tallaPolera && !tallasValidas.includes(datosVestuario.tallaPolera)) {
+        return { success: false, message: "Talla Polera/Camisa inválida." };
+      }
+      if (datosVestuario.tallaPolar && !['XS','S','M','L','XXL','XXXL'].includes(datosVestuario.tallaPolar)) {
+        return { success: false, message: "Talla Polar/Chaqueta inválida." };
+      }
+      if (datosVestuario.tallaPantalon && !numerosValidos.includes(String(datosVestuario.tallaPantalon))) {
+        return { success: false, message: "Talla Pantalón inválida." };
+      }
+      if (datosVestuario.tallaCalzado && !['32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48'].includes(String(datosVestuario.tallaCalzado))) {
+        return { success: false, message: "Talla Calzado inválida." };
+      }
+
+      // ── Manejo de archivo certificado pie diabético ──────────────────────
+      let urlCert = "";
+      const calzadoEsp = String(datosVestuario.calzadoEspecial || "").toUpperCase() === "SI";
+
+      if (calzadoEsp && datosVestuario.archivo && datosVestuario.archivo.base64) {
+        const archivo = datosVestuario.archivo;
+
+        // Validar tipo de archivo
+        const tiposPermitidos = ['image/jpeg','image/png','image/gif','image/webp',
+                                  'application/pdf',
+                                  'application/msword',
+                                  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        if (!tiposPermitidos.includes(archivo.mimeType)) {
+          return { success: false, message: "Tipo de archivo no permitido. Solo se aceptan imágenes, PDF o documentos Word." };
+        }
+
+        // Validar tamaño (máximo 15 MB)
+        const sizeInBytes = Math.ceil((archivo.base64.length * 3) / 4);
+        if (sizeInBytes > 15 * 1024 * 1024) {
+          return { success: false, message: "El archivo excede el tamaño máximo permitido de 15 MB." };
+        }
+
+        // Subir a Google Drive
+        try {
+          const carpetaId = CONFIG.CARPETAS.VESTUARIO_DOCS;
+          const folder = DriveApp.getFolderById(carpetaId);
+          const blob = Utilities.newBlob(
+            Utilities.base64Decode(archivo.base64),
+            archivo.mimeType,
+            'CertPieDiabetico_' + rutLimpioInput + '_' + Utilities.formatDate(new Date(), 'America/Santiago', 'yyyyMMdd')
+          );
+          const file = folder.createFile(blob);
+          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          urlCert = file.getUrl();
+        } catch (driveErr) {
+          Logger.log('❌ Error subiendo certificado pie diabético: ' + driveErr.toString());
+          return { success: false, message: "Error al subir el archivo. Intenta nuevamente." };
+        }
+
+      } else if (calzadoEsp && !datosVestuario.archivo) {
+        // Calzado especial activo pero sin nuevo archivo: conservar URL existente
+        urlCert = datosVestuario.urlActual || "";
+      } else {
+        // Calzado especial inactivo: limpiar URL
+        urlCert = "";
+      }
+
+      // ── Buscar fila del usuario y escribir ───────────────────────────────
+      for (let i = 1; i < data.length; i++) {
+        if (cleanRut(String(data[i][COL.RUT])) === rutLimpioInput) {
+          const fila = i + 1;
+          sheet.getRange(fila, COL.TALLA_POLERA + 1).setValue(datosVestuario.tallaPolera || "");
+          sheet.getRange(fila, COL.TALLA_POLAR + 1).setValue(datosVestuario.tallaPolar || "");
+          sheet.getRange(fila, COL.TALLA_PANTALON + 1).setValue(datosVestuario.tallaPantalon || "");
+          sheet.getRange(fila, COL.TALLA_CALZADO + 1).setValue(datosVestuario.tallaCalzado || "");
+          sheet.getRange(fila, COL.CALZADO_ESPECIAL + 1).setValue(calzadoEsp ? "SI" : "NO");
+          sheet.getRange(fila, COL.URL_CERT_PIE_DIABETICO + 1).setValue(urlCert);
+
+          // Invalidar caché del usuario
+          CacheService.getScriptCache().remove('user_' + rutLimpioInput);
+
+          return { success: true, message: "Datos de vestuario guardados correctamente.", urlCert: urlCert };
+        }
+      }
+
+      return { success: false, message: "Usuario no encontrado en el sistema." };
+
+    } catch (e) {
+      Logger.log('❌ Error en guardarDatosVestuario: ' + e.toString());
+      return { success: false, message: "Error del servidor: " + e.toString() };
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { success: false, message: "Servidor ocupado. Intenta nuevamente en unos segundos." };
+  }
+}
+
+/**
  * Obtener datos de usuario por RUT - Función auxiliar centralizada
  */
 function obtenerUsuarioPorRut(rutInput) {
-  var cache = CacheService.getScriptCache();
-  var rutLimpio = cleanRut(rutInput);
-  var cacheKey = 'user_' + rutLimpio;
+  const cache = CacheService.getScriptCache();
+  const rutLimpio = cleanRut(rutInput);
+  const cacheKey = 'user_' + rutLimpio;
   
-  var cached = cache.get(cacheKey);
+  const cached = cache.get(cacheKey);
   if (cached) {
     try {
       return JSON.parse(cached);
@@ -569,17 +723,17 @@ function obtenerUsuarioPorRut(rutInput) {
     }
   }
   
-  var sheet = getSheet('USUARIOS', 'USUARIOS');
-  var COL = CONFIG.COLUMNAS.USUARIOS;
+  const sheet = getSheet('USUARIOS', 'USUARIOS');
+  const COL = CONFIG.COLUMNAS.USUARIOS;
   
-  var lastRow = sheet.getLastRow();
+  const lastRow = sheet.getLastRow();
   if (lastRow < 2) return { encontrado: false };
   
-  var data = sheet.getRange(2, 1, lastRow - 1, COL.ESTADO_NEG_COLECT + 1).getDisplayValues();  // ← MODIFICADO
+  const data = sheet.getRange(2, 1, lastRow - 1, COL.ESTADO_NEG_COLECT + 1).getDisplayValues();
   
-  for (var i = 0; i < data.length; i++) {
+  for (let i = 0; i < data.length; i++) {
     if (cleanRut(data[i][COL.RUT]) === rutLimpio) {
-      var usuario = {
+      const usuario = {
         encontrado: true,
         rut: data[i][COL.RUT],
         nombre: data[i][COL.NOMBRE],
@@ -669,7 +823,7 @@ function getSheet(spreadsheetKey, sheetKey, createIfNotExists = false) {
     const sheetName = CONFIG.HOJAS[sheetKey];
     
     if (!sheetName) {
-      console.error(`❌ Clave de hoja "${sheetKey}" no encontrada en CONFIG.HOJAS`);
+      console.error("❌ Clave de hoja \"" + sheetKey + "\" no encontrada en CONFIG.HOJAS");
       return null;
     }
     
@@ -677,20 +831,20 @@ function getSheet(spreadsheetKey, sheetKey, createIfNotExists = false) {
     
     // Si no existe y se solicita creación automática
     if (!sheet && createIfNotExists) {
-      console.warn(`⚠️ Hoja "${sheetName}" no existe. Creándola...`);
+      console.warn("⚠️ Hoja \"" + sheetName + "\" no existe. Creándola...");
       sheet = ss.insertSheet(sheetName);
-      console.log(`✅ Hoja "${sheetName}" creada exitosamente`);
+      console.log("✅ Hoja \"" + sheetName + "\" creada exitosamente");
     }
     
     if (!sheet) {
-      console.error(`❌ Hoja "${sheetName}" no encontrada en spreadsheet ${spreadsheetKey}`);
+      console.error("❌ Hoja \"" + sheetName + "\" no encontrada en spreadsheet " + spreadsheetKey);
       return null;
     }
     
     return sheet;
     
   } catch (e) {
-    console.error(`❌ Error obteniendo hoja ${sheetKey} de ${spreadsheetKey}: ${e.toString()}`);
+    console.error("❌ Error obteniendo hoja " + sheetKey + " de " + spreadsheetKey + ": " + e.toString());
     return null;
   }
 }
@@ -772,6 +926,12 @@ function obtenerDatosUsuario(rutInput) {
             banco: row[COL.BANCO] || "",
             tipoCuenta: row[COL.TIPO_CUENTA] || "",
             numeroCuenta: row[COL.NUMERO_CUENTA] || "",
+            tallaPolera: row[COL.TALLA_POLERA] || "",
+            tallaPolar: row[COL.TALLA_POLAR] || "",
+            tallaPantalon: row[COL.TALLA_PANTALON] || "",
+            tallaCalzado: row[COL.TALLA_CALZADO] || "",
+            calzadoEspecial: row[COL.CALZADO_ESPECIAL] || "NO",
+            urlCertPieDiabetico: row[COL.URL_CERT_PIE_DIABETICO] || "",
             estadoCredencial: obtenerEstadoCredencialPorRut(row[COL.RUT])
           }
         };
@@ -822,8 +982,82 @@ function actualizarDatoUsuario(rutInput, campo, valor) {
     } finally {
       lock.releaseLock();
     }
+    
   } else {
     return { success: false, message: "Servidor ocupado." };
+  }
+}
+
+/**
+ * Actualiza los 3 campos bancarios en conjunto para Cuenta RUT de Banco Estado
+ * Establece: BANCO, TIPO_CUENTA y NUMERO_CUENTA automáticamente
+ */
+function actualizarBancoEstado(rutInput) {
+  var lock = LockService.getScriptLock();
+  if (lock.tryLock(30000)) {
+    try {
+      var sheet = getSheet('USUARIOS', 'USUARIOS');
+      var data = sheet.getDataRange().getValues();
+      var rutLimpioInput = cleanRut(rutInput);
+      var COL = CONFIG.COLUMNAS.USUARIOS;
+
+      // RUT sin dígito verificador = número de Cuenta RUT estándar
+      var rutBody = rutLimpioInput.slice(0, -1);
+
+      for (var i = 1; i < data.length; i++) {
+        if (cleanRut(String(data[i][COL.RUT])) === rutLimpioInput) {
+          sheet.getRange(i + 1, COL.BANCO + 1).setValue("BANCO ESTADO (Cuenta RUT)");
+          sheet.getRange(i + 1, COL.TIPO_CUENTA + 1).setValue("CUENTA VISTA");
+          sheet.getRange(i + 1, COL.NUMERO_CUENTA + 1).setValue(rutBody);
+
+          // Invalidar caché del usuario
+          var cache = CacheService.getScriptCache();
+          cache.remove('user_' + rutLimpioInput);
+
+          return { success: true, numeroCuenta: rutBody, tipoCuenta: "CUENTA VISTA" };
+        }
+      }
+      return { success: false, message: "Usuario no encontrado." };
+    } catch (e) {
+      return { success: false, message: "Error al actualizar: " + e.toString() };
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { success: false, message: "Servidor ocupado. Intente nuevamente." };
+  }
+}
+
+/**
+ * Guarda los 3 campos bancarios en una sola operación atómica.
+ * Invocada por el wizard de datos bancarios del frontend.
+ */
+function actualizarDatosBancarios(rutInput, banco, tipoCuenta, numeroCuenta) {
+  var lock = LockService.getScriptLock();
+  if (lock.tryLock(30000)) {
+    try {
+      var sheet = getSheet('USUARIOS', 'USUARIOS');
+      var data = sheet.getDataRange().getValues();
+      var rutLimpioInput = cleanRut(rutInput);
+      var COL = CONFIG.COLUMNAS.USUARIOS;
+
+      for (var i = 1; i < data.length; i++) {
+        if (cleanRut(String(data[i][COL.RUT])) === rutLimpioInput) {
+          sheet.getRange(i + 1, COL.BANCO + 1).setValue(banco);
+          sheet.getRange(i + 1, COL.TIPO_CUENTA + 1).setValue(tipoCuenta);
+          sheet.getRange(i + 1, COL.NUMERO_CUENTA + 1).setValue(numeroCuenta);
+          CacheService.getScriptCache().remove('user_' + rutLimpioInput);
+          return { success: true };
+        }
+      }
+      return { success: false, message: "Usuario no encontrado." };
+    } catch (e) {
+      return { success: false, message: "Error al actualizar: " + e.toString() };
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { success: false, message: "Servidor ocupado. Intente nuevamente." };
   }
 }
 
@@ -942,32 +1176,40 @@ function crearSolicitudPrestamo(rutGestor, tipo, cuotas, medioPago, rutBeneficia
          if (!beneficiario) return { success: false, message: "RUT del socio no encontrado." };
       }
 
-      // 3. Validar préstamos activos (LÓGICA NUEVA: Por Tipo)
+      // 3. Validar préstamos activos — bloquear si hay un préstamo del mismo tipo base activo
       const dataPrestamos = sheetPrestamos.getDataRange().getDisplayValues();
+      
+      // Extraer el tipo base del nuevo préstamo (antes de " - Opción")
+      const tipoBaseNuevo = tipo.split(' - ')[0].trim(); // "Emergencia" o "Vacaciones"
+      
       for (let i = 1; i < dataPrestamos.length; i++) {
         const row = dataPrestamos[i];
         const rowRut = cleanRut(row[COL_PRES.RUT]);
         const rowEstado = row[COL_PRES.ESTADO];
-        const rowTipo = row[COL_PRES.TIPO]; // Leemos el tipo de la fila
+        const rowTipo = String(row[COL_PRES.TIPO] || '');
         
         const estadosActivos = ["Solicitado", "Enviado", "Vigente"];
         
-        // CAMBIO AQUI: Validamos RUT + ESTADO + TIPO IGUAL
-        // Usamos .includes() para ser flexibles (ej: "Préstamo de Emergencia" vs "Emergencia")
+        // Extraer tipo base del registro existente para comparar correctamente
+        const tipoBaseExistente = rowTipo.split(' - ')[0].trim();
+        
         if (rowRut === cleanRut(beneficiario.rut) && 
             estadosActivos.includes(rowEstado) && 
-            rowTipo.includes(tipo)) {
+            tipoBaseExistente === tipoBaseNuevo) {
               
-          return { success: false, message: `El socio ${beneficiario.nombre} ya tiene un préstamo de tipo "${tipo}" en estado "${rowEstado}".` };
+          return { 
+            success: false, 
+            message: 'Tienes un préstamo de ' + tipoBaseNuevo + ' en estado "' + rowEstado + '". Solo puedes solicitar uno nuevo cuando el préstamo actual esté Pagado o Rechazado.' 
+          };
         }
       }
 
-      // --- LOGICA DEL MONTO ---
+      // --- LOGICA DEL MONTO (Contrato Colectivo 2026) ---
       let montoTexto = "$0";
       if (tipo.includes('Emergencia')) {
-        montoTexto = "$200.000";
-      } else { 
-        montoTexto = "$150.000";
+        montoTexto = tipo.includes('Opcion B') || tipo.includes('Opción B') ? "$400.000" : "$300.000";
+      } else if (tipo.includes('Vacaciones')) {
+        montoTexto = tipo.includes('Opcion B') || tipo.includes('Opción B') ? "$300.000" : "$200.000";
       }
 
       // 4. Preparar Datos y CALCULAR FECHA TÉRMINO (Lógica Contable)
@@ -1506,6 +1748,121 @@ function verificarCambiosPrestamos() {
 }
 
 // ==========================================
+// ESTADOS SWITCHES PARA DASHBOARD (badges)
+// ==========================================
+
+/**
+ * Retorna el estado habilitado/deshabilitado de todos los módulos
+ * con switch, en una sola llamada al backend, para mostrar badges
+ * de estado en las tarjetas del dashboard.
+ */
+function obtenerEstadosSwitchDashboard() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+
+    var prestamos     = (props.getProperty('prestamos_habilitado')        !== 'false');
+    var contrato      = (props.getProperty('contrato_colectivo_habilitado') !== 'false');
+    var slimquest     = (props.getProperty('slimquest_habilitado')         !== 'false');
+    var calculadora   = (props.getProperty('calculadora_habilitada')       !== 'false');
+
+    // Justificaciones usa lógica de fecha; reutilizamos la función existente
+    var justificaciones = false;
+    try {
+      var resJ = obtenerEstadoSwitchJustificaciones();
+      justificaciones = resJ.habilitado;
+    } catch (eJ) {
+      justificaciones = false;
+    }
+
+    var permisosMedicos = (props.getProperty('permisos_medicos_habilitado') !== 'false');
+    var asistencia      = (props.getProperty('asistencia_habilitada')       !== 'false');
+    var apelaciones     = (props.getProperty('apelaciones_habilitado')      !== 'false');
+
+    return {
+      success: true,
+      prestamos:       prestamos,
+      justificaciones: justificaciones,
+      contrato:        contrato,
+      slimquest:       slimquest,
+      calculadora:     calculadora,
+      permisosMedicos: permisosMedicos,
+      asistencia:      asistencia,
+      apelaciones:     apelaciones
+    };
+  } catch (e) {
+    Logger.log('Error en obtenerEstadosSwitchDashboard: ' + e.toString());
+    return { success: false };
+  }
+}
+
+// ==========================================
+// SWITCH MÓDULO APELACIONES
+// ==========================================
+
+/**
+ * Obtener estado del switch de Apelaciones.
+ * Por defecto habilitado (null = primera ejecución).
+ */
+function obtenerEstadoSwitchApelaciones() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var estado = props.getProperty('apelaciones_habilitado');
+    var habilitado = (estado === null || estado === 'true');
+    return { success: true, habilitado: habilitado };
+  } catch (e) {
+    Logger.log('Error en obtenerEstadoSwitchApelaciones: ' + e.toString());
+    return { success: true, habilitado: true };
+  }
+}
+
+/**
+ * Actualizar estado del switch de Apelaciones (solo ADMIN).
+ */
+function toggleSwitchApelaciones(estado) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('apelaciones_habilitado', estado ? 'true' : 'false');
+    return { success: true, habilitado: estado };
+  } catch (e) {
+    Logger.log('Error en toggleSwitchApelaciones: ' + e.toString());
+    return { success: false };
+  }
+}
+
+// ==========================================
+// SWITCH MÓDULO REGISTRO ASISTENCIA
+// ==========================================
+
+/**
+ * Obtener estado del switch de Registro Asistencia.
+ * Por defecto habilitado (null = primera ejecución).
+ */
+function obtenerEstadoSwitchAsistencia() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var estado = props.getProperty('asistencia_habilitada');
+    var habilitado = (estado === null || estado === 'true');
+    return { success: true, habilitado: habilitado };
+  } catch (e) {
+    Logger.log('Error en obtenerEstadoSwitchAsistencia: ' + e.toString());
+    return { success: true, habilitado: true };
+  }
+}
+
+/**
+ * Actualizar estado del switch de Registro Asistencia (solo ADMIN).
+ */
+function toggleSwitchAsistencia(estado) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('asistencia_habilitada', estado ? 'true' : 'false');
+    return { success: true };
+  } catch (e) {
+    return { success: false, message: 'Error: ' + e.toString() };
+  }
+}
+
+// ==========================================
 // SWITCH MÓDULO PRÉSTAMOS
 // ==========================================
 
@@ -1532,6 +1889,138 @@ function toggleSwitchPrestamos(estado) {
   try {
     var props = PropertiesService.getScriptProperties();
     props.setProperty('prestamos_habilitado', estado ? 'true' : 'false');
+    return { success: true };
+  } catch (e) {
+    return { success: false, message: 'Error: ' + e.toString() };
+  }
+}
+
+// ==========================================
+// SWITCH MÓDULO CONTRATO COLECTIVO
+// ==========================================
+
+/**
+ * Obtener estado del switch de Contrato Colectivo.
+ * Por defecto habilitado (null = primera ejecución).
+ */
+function obtenerEstadoSwitchContratoColectivo() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var estado = props.getProperty('contrato_colectivo_habilitado');
+    var habilitado = (estado === null || estado === 'true');
+    return { success: true, habilitado: habilitado };
+  } catch (e) {
+    Logger.log('Error en obtenerEstadoSwitchContratoColectivo: ' + e.toString());
+    return { success: true, habilitado: true };
+  }
+}
+
+/**
+ * Actualizar estado del switch de Contrato Colectivo (solo ADMIN).
+ */
+function toggleSwitchContratoColectivo(estado) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('contrato_colectivo_habilitado', estado ? 'true' : 'false');
+    return { success: true };
+  } catch (e) {
+    return { success: false, message: 'Error: ' + e.toString() };
+  }
+}
+
+// ==========================================
+// SWITCH MÓDULO PERMISOS MÉDICOS
+// ==========================================
+
+/**
+ * Obtener estado del switch de Permisos Médicos.
+ * Por defecto habilitado (null = primera ejecución).
+ */
+function obtenerEstadoSwitchPermisosMedicos() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var estado = props.getProperty('permisos_medicos_habilitado');
+    var habilitado = (estado === null || estado === 'true');
+    return { success: true, habilitado: habilitado };
+  } catch (e) {
+    Logger.log('Error en obtenerEstadoSwitchPermisosMedicos: ' + e.toString());
+    return { success: true, habilitado: true };
+  }
+}
+
+/**
+ * Actualizar estado del switch de Permisos Médicos (solo ADMIN).
+ */
+function toggleSwitchPermisosMedicos(estado) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('permisos_medicos_habilitado', estado ? 'true' : 'false');
+    return { success: true };
+  } catch (e) {
+    return { success: false, message: 'Error: ' + e.toString() };
+  }
+}
+
+// ==========================================
+// SWITCH MÓDULO SLIM QUEST
+// ==========================================
+
+/**
+ * Obtener estado del switch de SLIM Quest.
+ * Por defecto habilitado (null = primera ejecución).
+ */
+function obtenerEstadoSwitchSlimQuest() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var estado = props.getProperty('slimquest_habilitado');
+    var habilitado = (estado === null || estado === 'true');
+    return { success: true, habilitado: habilitado };
+  } catch (e) {
+    Logger.log('Error en obtenerEstadoSwitchSlimQuest: ' + e.toString());
+    return { success: true, habilitado: true };
+  }
+}
+
+/**
+ * Actualizar estado del switch de SLIM Quest (solo ADMIN).
+ */
+function toggleSwitchSlimQuest(estado) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('slimquest_habilitado', estado ? 'true' : 'false');
+    return { success: true };
+  } catch (e) {
+    return { success: false, message: 'Error: ' + e.toString() };
+  }
+}
+
+// ==========================================
+// SWITCH MÓDULO CALCULADORA HE
+// ==========================================
+
+/**
+ * Obtener estado del switch de Calculadora HE.
+ * Por defecto habilitado (null = primera ejecución).
+ */
+function obtenerEstadoSwitchCalculadora() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var estado = props.getProperty('calculadora_habilitada');
+    var habilitado = (estado === null || estado === 'true');
+    return { success: true, habilitado: habilitado };
+  } catch (e) {
+    Logger.log('Error en obtenerEstadoSwitchCalculadora: ' + e.toString());
+    return { success: true, habilitado: true };
+  }
+}
+
+/**
+ * Actualizar estado del switch de Calculadora HE (solo ADMIN).
+ */
+function toggleSwitchCalculadora(estado) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('calculadora_habilitada', estado ? 'true' : 'false');
     return { success: true };
   } catch (e) {
     return { success: false, message: 'Error: ' + e.toString() };
@@ -1679,6 +2168,7 @@ function verificarDisponibilidadJustificaciones() {
  */
 function validarJustificacionMesActual(rut) {
   try {
+    SpreadsheetApp.flush(); // Fuerza sincronización antes de leer
     const sheet = getSheet('JUSTIFICACIONES', 'JUSTIFICACIONES');
     const data = sheet.getDataRange().getValues();
     const COL = CONFIG.COLUMNAS.JUSTIFICACIONES;
@@ -2746,30 +3236,46 @@ function verificarCambiosApelaciones() {
       
       if (estadoActual !== estadoNotif) {
         if (correo && correo.includes("@")) {
-          let color = "#ea580c";
-          let titulo = "Actualización de Apelación";
-          
-          if (estadoActual.includes("Aceptado")) { 
-            color = "#15803d"; 
-            titulo = "Apelación Aceptada"; 
-          } else if (estadoActual.includes("Rechazado")) { 
-            color = "#b91c1c"; 
-            titulo = "Apelación Rechazada"; 
+          let color = "#374151";
+          let titulo = "Actualizacion de Apelacion";
+          let mensajeEstado = "El estado de tu apelacion ha sido actualizado.";
+
+          if (estadoActual === "Enviado" || estadoActual === "Pendiente") {
+            color = "#b45309";
+            titulo = "Apelacion Recibida";
+            mensajeEstado = "Tu apelacion ha sido registrada y se encuentra en espera de revision por la directiva.";
+          } else if (estadoActual === "En revision") {
+            color = "#1d4ed8";
+            titulo = "Apelacion en Revision";
+            mensajeEstado = "Tu apelacion esta siendo revisada activamente por la directiva del sindicato.";
+          } else if (estadoActual === "Aceptado-Obs") {
+            color = "#0369a1";
+            titulo = "Apelacion Aceptada con Observaciones";
+            mensajeEstado = "Tu apelacion ha sido aceptada por la directiva, pero incluye observaciones importantes. Revisa el detalle a continuacion.";
+          } else if (estadoActual.includes("Aceptado")) {
+            color = "#15803d";
+            titulo = "Apelacion Aceptada";
+            mensajeEstado = "Tu apelacion ha sido aceptada por la directiva. Pronto recibiras mas informacion.";
+          } else if (estadoActual.includes("Rechazado")) {
+            color = "#b91c1c";
+            titulo = "Apelacion Rechazada";
+            mensajeEstado = "Tu apelacion fue revisada por la directiva y ha sido rechazada. Revisa la observacion para mas detalles.";
           } else if (estadoActual === "Pagado") {
             color = "#065f46";
-            titulo = "Devolución de Multa Procesada";
+            titulo = "Devolucion de Multa Procesada";
+            mensajeEstado = "La devolucion de tu multa ha sido procesada exitosamente. Puedes revisar el comprobante de pago a continuacion.";
           }
-          
+
           // Extraer año y mes desde el string "yyyy-MM" (seguro porque getDisplayValues devuelve texto)
           const partesMes = mesApel.split("-");
           const añoMes = parseInt(partesMes[0]);
           const numMes = parseInt(partesMes[1]) - 1; // 0-indexed para el constructor de Date
           const fechaMes = new Date(añoMes, numMes, 15, 12, 0, 0); // Anclado al mediodía local
           const nombreMes = fechaMes.toLocaleString('es-CL', { month: 'long', year: 'numeric' });
-          
-          // Construir enlace comprobante de devolución si existe y el estado es Pagado
+
+          // Construir boton comprobante de devolucion si existe y el estado es Pagado
           const linkDevolucion = (estadoActual === "Pagado" && urlDevolucion && String(urlDevolucion).includes("http"))
-            ? `<a href="${urlDevolucion}" style="color: #065f46; text-decoration: none; font-weight: bold;">Ver Comprobante de Devolución</a>`
+            ? "<a href=\"" + urlDevolucion + "\" style=\"display:inline-block;background-color:#065f46;color:#ffffff;text-decoration:none;font-weight:bold;padding:10px 22px;border-radius:6px;font-size:14px;\">Ver Comprobante de Pago</a>"
             : "";
 
           const datosCorreoApelacion = {
@@ -2777,19 +3283,19 @@ function verificarCambiosApelaciones() {
             "MES APELADO": nombreMes.toUpperCase(),
             "MOTIVO": tipoMotivo,
             "NUEVO ESTADO": estadoActual,
-            "OBSERVACIÓN": obs || "Sin observaciones"
+            "OBSERVACION": obs || "Sin observaciones"
           };
 
           if (estadoActual === "Pagado" && linkDevolucion) {
-            datosCorreoApelacion["COMPROBANTE DEVOLUCIÓN"] = linkDevolucion;
+            datosCorreoApelacion["COMPROBANTE DE PAGO"] = linkDevolucion;
           }
 
           enviarCorreoEstilizado(
-            correo, 
-            titulo + " - Sindicato SLIM n°3", 
-            titulo, 
-            `Hola ${nombre}, el estado de tu apelación ha cambiado.`, 
-            datosCorreoApelacion, 
+            correo,
+            titulo + " - Sindicato SLIM n" + "\u00b0" + "3",
+            titulo,
+            "Hola <strong>" + nombre + "</strong>, " + mensajeEstado,
+            datosCorreoApelacion,
             color
           );
         }
@@ -2802,88 +3308,209 @@ function verificarCambiosApelaciones() {
   }
 }
 
-function procesarPermisosComprobantesDevolucion() {
+function appendLogPermisoDevolucion(sheet, fila, correo, resultado, colLog) {
+  var timestamp = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy HH:mm");
+  var nuevaLinea = timestamp + " | " + correo + " | " + resultado;
   try {
-    // ⭐ VALIDACIÓN
-    const sheet = getSheet('APELACIONES', 'APELACIONES');
+    var logActual = String(sheet.getRange(fila, colLog).getValue() || "");
+    var logActualizado = logActual ? (logActual + "\n" + nuevaLinea) : nuevaLinea;
+    sheet.getRange(fila, colLog).setValue(logActualizado);
+  } catch (logErr) {
+    console.warn("⚠️ No se pudo escribir log fila " + fila + ": " + logErr.toString());
+  }
+}
+
+function procesarPermisosComprobantesDevolucion() {
+  var tiempoInicio = new Date().getTime();
+  var LIMITE_MS = 25 * 60 * 1000; // 25 minutos de guarda (límite Apps Script = 30 min)
+
+  try {
+    var sheet = getSheet('APELACIONES', 'APELACIONES');
     if (!sheet) {
       console.error("❌ No se pudo acceder a la hoja de apelaciones");
       return;
     }
-    
-    const data = sheet.getDataRange().getValues();
-    const COL = CONFIG.COLUMNAS.APELACIONES;
-    
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      const urlComprobanteDevolucion = String(row[COL.URL_COMPROBANTE_DEVOLUCION]);
-      const correoUsuario = row[COL.CORREO];
-      
-      if (urlComprobanteDevolucion && 
-          urlComprobanteDevolucion.includes("drive.google.com") && 
-          correoUsuario && 
-          correoUsuario.includes("@")) {
-        
+
+    var data = sheet.getDataRange().getValues();
+    var COL = CONFIG.COLUMNAS.APELACIONES;
+    var procesados = 0;
+    var omitidos = 0;
+    var erroresTransitorios = 0;
+
+    for (var i = 1; i < data.length; i++) {
+
+      // ── GUARDIA DE TIEMPO ──
+      if (new Date().getTime() - tiempoInicio > LIMITE_MS) {
+        console.warn("⏱️ Límite de tiempo alcanzado. Procesados: " + procesados + ". Pendientes en próxima ejecución.");
+        break;
+      }
+
+      var row = data[i];
+      var urlComprobanteDevolucion = String(row[COL.URL_COMPROBANTE_DEVOLUCION] || "");
+      var correoUsuario            = String(row[COL.CORREO] || "");
+      var permisoDevolucion        = row.length > COL.PERMISO_DEVOLUCION ? String(row[COL.PERMISO_DEVOLUCION] || "") : "";
+
+      // ── SKIP: ya procesado (OK o error permanente) ──
+      if (permisoDevolucion === "OK" || permisoDevolucion === "ERROR_PERMANENTE") {
+        omitidos++;
+        continue;
+      }
+
+      // ── SKIP: sin URL de devolución válida ──
+      if (!urlComprobanteDevolucion || !urlComprobanteDevolucion.includes("drive.google.com")) {
+        continue;
+      }
+
+      // ── SKIP: sin correo válido ──
+      if (!correoUsuario || !correoUsuario.includes("@")) {
+        continue;
+      }
+
+      try {
+        var fileId = "";
+        if (urlComprobanteDevolucion.includes("/d/")) {
+          fileId = urlComprobanteDevolucion.split("/d/")[1].split("/")[0];
+        } else if (urlComprobanteDevolucion.includes("id=")) {
+          fileId = urlComprobanteDevolucion.split("id=")[1].split("&")[0];
+        }
+
+        if (!fileId) continue;
+
+        var file = DriveApp.getFileById(fileId);
+        var viewers = file.getViewers();
+        var hasAccess = viewers.some(function(viewer) { return viewer.getEmail() === correoUsuario; });
+
+        if (hasAccess) {
+          sheet.getRange(i + 1, COL.PERMISO_DEVOLUCION + 1).setValue("OK");
+          appendLogPermisoDevolucion(sheet, i + 1, correoUsuario, "YA_TENIA_ACCESO -> OK", COL.LOG_PERMISOS + 1);
+          console.log("✅ Fila " + (i + 1) + ": " + correoUsuario + " ya tenía acceso. Marcado OK.");
+          procesados++;
+          continue;
+        }
+
+        // ── INTENTO 1: API Avanzada (sin email de notificación) ──
+        var permisoOtorgado = false;
+        var errorPermanente = false;
+
         try {
-          let fileId = "";
-          if (urlComprobanteDevolucion.includes("/d/")) {
-            fileId = urlComprobanteDevolucion.split("/d/")[1].split("/")[0];
-          } else if (urlComprobanteDevolucion.includes("id=")) {
-            fileId = urlComprobanteDevolucion.split("id=")[1].split("&")[0];
-          }
-          
-          if (fileId) {
-            const file = DriveApp.getFileById(fileId);
-            const viewers = file.getViewers();
-            const hasAccess = viewers.some(viewer => viewer.getEmail() === correoUsuario);
-            
-            if (!hasAccess) {
+          var recursoPermiso = {
+            'role': 'reader',
+            'type': 'user',
+            'value': correoUsuario
+          };
+          Drive.Permissions.insert(recursoPermiso, fileId, {
+            sendNotificationEmails: false
+          });
+          permisoOtorgado = true;
+          console.log("✅ Permiso silencioso otorgado (API Avanzada) a " + correoUsuario + " para archivo " + fileId);
 
-              // ── INTENTO 1: API Avanzada (sin email de notificación) ──
-              let permisoOtorgado = false;
-              try {
-                const recursoPermiso = {
-                  'role': 'reader',
-                  'type': 'user',
-                  'value': correoUsuario
-                };
-                Drive.Permissions.insert(recursoPermiso, fileId, {
-                  sendNotificationEmails: false
-                });
-                permisoOtorgado = true;
-                console.log(`✅ Permiso silencioso otorgado (API Avanzada) a ${correoUsuario} para archivo ${fileId}`);
+        } catch (apiError) {
+          var apiErrorStr = apiError.toString();
+          console.warn("⚠️ Fallo API Avanzada para " + correoUsuario + " - " + apiErrorStr);
 
-              } catch (apiError) {
-                console.warn(`⚠️ Fallo API Avanzada para ${correoUsuario} - ${apiError} - Intentando addViewer...`);
-                Utilities.sleep(1000);
+          // Error permanente: Drive rechaza este correo de forma definitiva
+          if (apiErrorStr.includes("Bad Request") || apiErrorStr.includes("No puedes compartir")) {
+            errorPermanente = true;
+            console.error("❌ Error permanente (API Avanzada) para " + correoUsuario + ": " + apiErrorStr);
 
-                // ── INTENTO 2: addViewer ──
+          } else {
+            Utilities.sleep(1000);
+
+            // ── INTENTO 2: addViewer ──
+            try {
+              file.addViewer(correoUsuario);
+              permisoOtorgado = true;
+              console.log("✅ Permiso otorgado via addViewer a " + correoUsuario);
+
+            } catch (fallbackError) {
+              var fallbackStr = fallbackError.toString();
+              console.warn("⚠️ Fallo addViewer para " + correoUsuario + " - " + fallbackStr);
+
+              if (fallbackStr.includes("Invalid argument") || fallbackStr.includes("Bad Request")) {
+                errorPermanente = true;
+                console.error("❌ Error permanente (addViewer) para " + correoUsuario + ": " + fallbackStr);
+
+              } else {
+                Utilities.sleep(2000);
+
+                // ── INTENTO 3 (ÚLTIMO): Reintento final ──
                 try {
                   file.addViewer(correoUsuario);
                   permisoOtorgado = true;
-                  console.log(`✅ Permiso otorgado via addViewer a ${correoUsuario} para archivo ${fileId}`);
+                  console.log("✅ Permiso otorgado en reintento final a " + correoUsuario);
 
-                } catch (fallbackError) {
-                  console.warn(`⚠️ Fallo addViewer para ${correoUsuario} - ${fallbackError} - Reintentando en 2s...`);
-                  Utilities.sleep(2000);
-
-                  // ── INTENTO 3 (ÚLTIMO): Reintento final ──
-                  try {
-                    file.addViewer(correoUsuario);
-                    permisoOtorgado = true;
-                    console.log(`✅ Permiso otorgado en reintento final a ${correoUsuario} para archivo ${fileId}`);
-                  } catch (finalError) {
-                    console.error(`❌ Error fatal al otorgar permiso a ${correoUsuario} para archivo ${fileId}: ${finalError}`);
+                } catch (finalError) {
+                  var finalStr = finalError.toString();
+                  console.error("❌ Error fatal al otorgar permiso a " + correoUsuario + ": " + finalStr);
+                  if (finalStr.includes("Invalid argument") || finalStr.includes("Bad Request")) {
+                    errorPermanente = true;
+                  } else {
+                    erroresTransitorios++;
                   }
                 }
               }
             }
           }
-        } catch (fileErr) {
-          console.error(`⚠️ Error procesando archivo para fila ${i + 1}: ${fileErr}`);
         }
+
+        // ── REGISTRAR RESULTADO EN LA HOJA ──
+        if (permisoOtorgado) {
+          sheet.getRange(i + 1, COL.PERMISO_DEVOLUCION + 1).setValue("OK");
+          appendLogPermisoDevolucion(sheet, i + 1, correoUsuario, "PERMISO_OTORGADO -> OK", COL.LOG_PERMISOS + 1);
+          console.log("✅ Fila " + (i + 1) + " marcada como OK");
+          procesados++;
+        } else if (errorPermanente) {
+          sheet.getRange(i + 1, COL.PERMISO_DEVOLUCION + 1).setValue("ERROR_PERMANENTE");
+          appendLogPermisoDevolucion(sheet, i + 1, correoUsuario, "ERROR_PERMANENTE (Drive rechaza correo)", COL.LOG_PERMISOS + 1);
+          console.error("❌ Fila " + (i + 1) + " marcada como ERROR_PERMANENTE (" + correoUsuario + ")");
+          procesados++;
+        } else {
+          // Error transitorio: verificar si el usuario ya tiene acceso real antes de reintentar
+          try {
+            var viewersFinal = file.getViewers();
+            var yaConAcceso = viewersFinal.some(function(v) {
+              return v.getEmail().toLowerCase() === correoUsuario.toLowerCase();
+            });
+            if (yaConAcceso) {
+              sheet.getRange(i + 1, COL.PERMISO_DEVOLUCION + 1).setValue("OK");
+              appendLogPermisoDevolucion(sheet, i + 1, correoUsuario, "ACCESO_VERIFICADO_POST_INTENTO -> OK", COL.LOG_PERMISOS + 1);
+              console.log("✅ Fila " + (i + 1) + ": acceso real confirmado post-intentos. Marcado OK para " + correoUsuario);
+              procesados++;
+            } else {
+              // Sin acceso confirmado: registrar intento fallido acumulado
+              var intentosPrevios = String(permisoDevolucion).startsWith("REINTENTO_") 
+                ? parseInt(String(permisoDevolucion).replace("REINTENTO_", "")) || 0
+                : 0;
+              intentosPrevios++;
+              if (intentosPrevios >= 5) {
+                sheet.getRange(i + 1, COL.PERMISO_DEVOLUCION + 1).setValue("ERROR_PERMANENTE");
+                appendLogPermisoDevolucion(sheet, i + 1, correoUsuario, "MAX_REINTENTOS (5/5) -> ERROR_PERMANENTE", COL.LOG_PERMISOS + 1);
+                console.error("❌ Fila " + (i + 1) + ": 5 reintentos fallidos. Marcado ERROR_PERMANENTE para " + correoUsuario);
+                procesados++;
+              } else {
+                sheet.getRange(i + 1, COL.PERMISO_DEVOLUCION + 1).setValue("REINTENTO_" + intentosPrevios);
+                appendLogPermisoDevolucion(sheet, i + 1, correoUsuario, "REINTENTO_" + intentosPrevios + "/5 (error transitorio Drive)", COL.LOG_PERMISOS + 1);
+                console.warn("⚠️ Fila " + (i + 1) + ": intento " + intentosPrevios + "/5 fallido para " + correoUsuario + ". Reintentará próxima hora.");
+                erroresTransitorios++;
+              }
+            }
+
+          } catch (verifErr) {
+            console.warn("⚠️ No se pudo verificar acceso para " + correoUsuario + ": " + verifErr.toString());
+            erroresTransitorios++;
+          }
+        }
+        // Fin registro resultado
+
+      } catch (fileErr) {
+        var fileErrStr = fileErr.toString();
+        console.error("⚠️ Error procesando archivo para fila " + (i + 1) + ": " + fileErrStr);
+        erroresTransitorios++;
       }
     }
+
+    console.log("📊 Resumen procesarPermisosComprobantesDevolucion: Procesados=" + procesados + " | Omitidos (ya resueltos)=" + omitidos + " | Errores transitorios=" + erroresTransitorios + " | Total filas=" + (data.length - 1));
+
   } catch (e) {
     console.error("❌ Error en procesarPermisosComprobantesDevolucion: " + e.toString());
   }
@@ -3124,7 +3751,7 @@ function solicitarPermisoMedico(rutGestor, tipoPermiso, fechaInicio, motivo, rut
         }
 
         urlDocFinal = resultadoSubida.url;
-        estadoFinal = "Documento Adjuntado";
+        estadoFinal = "Solicitado con Documento";
         fechaSubidaFinal = fechaHoyCompleta;
       }
       // ===== FIN SUBIDA DOCUMENTO =====
@@ -3133,6 +3760,7 @@ function solicitarPermisoMedico(rutGestor, tipoPermiso, fechaInicio, motivo, rut
       newRow[COL_PERM.ESTADO] = estadoFinal;
       newRow[COL_PERM.FECHA_SUBIDA] = fechaSubidaFinal;
       newRow[COL_PERM.NOTIFICADO_REP_LEGAL] = false;
+      newRow[COL_PERM.NOTIFICADO_SOCIO] = false;
       newRow[COL_PERM.GESTION] = gestion;
       newRow[COL_PERM.NOMBRE_DIRIGENTE] = nomDirigente;
       newRow[COL_PERM.CORREO_DIRIGENTE] = correoDirigente;
@@ -3184,63 +3812,101 @@ function solicitarPermisoMedico(rutGestor, tipoPermiso, fechaInicio, motivo, rut
       // ESCRIBIR REGISTRO (PROTEGIDO POR LOCK)
       // ========================================
       sheetPermisos.appendRow(newRow);
+      var filaRepLegal = sheetPermisos.getLastRow();
       Logger.log(`✅ Permiso creado exitosamente. ID: ${idUnico}`);
       
       // ========================================
       // ENVIAR NOTIFICACIONES
       // ========================================
       // Correo al socio (solo cuando gestiona por sí mismo)
-      if (gestion !== "Dirigente" && beneficiario.correo && beneficiario.correo.includes("@")) {
-        const fechaInicioObjEmail = new Date(fechaInicioNormalizada);
-        const fechaInicioEmailStr = fechaInicioObjEmail.toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' });
-        
-        const mensajeSocio = urlDocFinal !== "Sin documento"
-          ? `Hola ${beneficiario.nombre}, se ha registrado tu solicitud de permiso médico y el documento de respaldo ha sido adjuntado exitosamente. No necesitas realizar ninguna acción adicional.`
-          : `Hola ${beneficiario.nombre}, se ha registrado tu solicitud de permiso médico.\n<strong>IMPORTANTE:</strong> Debes adjuntar el documento de respaldo en el historial del módulo una vez realizada la atención médica.`;
+      if (gestion !== "Dirigente") {
+        if (esCorreoValido(beneficiario.correo)) {
+          var fechaInicioEmailStr = new Date(fechaInicio + 'T12:00:00').toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' });
+          var asuntoSocio, tituloSocio, mensajeSocio, datosSocio;
 
-        const datosSocio = { 
-          "ID": idUnico,
-          "Trabajador": beneficiario.nombre,
-          "RUT": beneficiario.rut,
-          "Tipo": tipoPermiso,
-          "Fecha Inicio": new Date(fechaInicio + 'T12:00:00').toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' }),
-          "Motivo": motivo,
-          "Fecha Solicitud": fechaHoy.toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' }),
-          "Documento": urlDocFinal !== "Sin documento"
-            ? '<a href="' + urlDocFinal + '" style="color:#10b981;text-decoration:none;font-weight:600;">📎 Ver Documento Adjunto</a>'
-            : "Pendiente de adjuntar desde el historial"
-        };
+          if (urlDocFinal !== "Sin documento") {
+            // EVENTO 2: Solicitud CON documento adjunto al momento
+            asuntoSocio  = "Permiso Medico Registrado con Documento - Sindicato SLIM n3";
+            tituloSocio  = "Solicitud Completa con Documento";
+            mensajeSocio = "Hola <strong>" + beneficiario.nombre + "</strong>, tu permiso medico ha sido registrado correctamente y el documento medico de respaldo fue adjuntado en el mismo momento. No necesitas realizar ninguna accion adicional.";
+            datosSocio = {
+              "ID": idUnico,
+              "Tipo Permiso": tipoPermiso,
+              "Fecha Inicio": fechaInicioEmailStr,
+              "Motivo": motivo,
+              "Estado": estadoFinal,
+              "Fecha Solicitud": fechaHoy.toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' }),
+              "Documento": '<a href="' + urlDocFinal + '" style="color:#10b981;text-decoration:none;font-weight:600;">Ver Documento Adjunto</a>'
+            };
+          } else {
+            // EVENTO 1: Solicitud SIN documento
+            asuntoSocio  = "Solicitud de Permiso Medico Registrada - Sindicato SLIM n3";
+            tituloSocio  = "Permiso Medico Solicitado";
+            mensajeSocio = "Hola <strong>" + beneficiario.nombre + "</strong>, tu solicitud de permiso medico ha sido registrada exitosamente. Recuerda adjuntar el documento medico de respaldo desde el historial del modulo una vez realizada la atencion medica.";
+            datosSocio = {
+              "ID": idUnico,
+              "Tipo Permiso": tipoPermiso,
+              "Fecha Inicio": fechaInicioEmailStr,
+              "Motivo": motivo,
+              "Estado": estadoFinal,
+              "Fecha Solicitud": fechaHoy.toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' }),
+              "Documento": "Pendiente - Adjuntar desde historial una vez realizada la atencion medica"
+            };
+          }
 
-        enviarCorreoEstilizado(
-          beneficiario.correo,
-          "Solicitud Permiso Médico - Sindicato SLIM n°3",
-          "Permiso Médico Solicitado",
-          mensajeSocio,
-          datosSocio,
-          "#10b981"
-        );
+          try {
+            enviarCorreoEstilizado(beneficiario.correo, asuntoSocio, tituloSocio, mensajeSocio, datosSocio, "#10b981");
+            sheetPermisos.getRange(filaRepLegal, COL_PERM.NOTIFICADO_SOCIO + 1).setValue(true);
+          } catch (eSocio) {
+            Logger.log("Advertencia solicitarPermisoMedico: Fallo envio socio fila " + filaRepLegal + " - " + eSocio.toString());
+          }
+        } else {
+          sheetPermisos.getRange(filaRepLegal, COL_PERM.NOTIFICADO_SOCIO + 1).setValue("SIN_CORREO");
+        }
       }
       
-      enviarCorreoEstilizado(
-        CORREO_REPRESENTANTE_LEGAL,
-        "Notificación Permiso Médico - Sindicato SLIM n°3",
-        "Nueva Solicitud de Permiso Médico",
-        `Se ha registrado una solicitud de permiso médico para el trabajador <strong>${beneficiario.nombre}</strong>.`,
-        { 
-          "ID": idUnico,
-          "Trabajador": beneficiario.nombre,
-          "RUT": beneficiario.rut,
-          "Tipo": tipoPermiso,
-          "Fecha Inicio": fechaInicioNormalizada,
-          "Motivo": motivo,
-          "Estado": estadoFinal,
-          "Fecha Solicitud": fechaHoyCompleta.toLocaleDateString(),
-          "Documento": urlDocFinal !== "Sin documento"
-            ? '<a href="' + urlDocFinal + '" style="color:#10b981;text-decoration:none;font-weight:600;">📎 Ver Documento Adjunto</a>'
-            : "Pendiente"
-        },
-        "#10b981"
-      );
+      try {
+        var asuntoRepLegal, tituloRepLegal, mensajeRepLegal, datosRepLegal;
+
+        if (urlDocFinal !== "Sin documento") {
+          // EVENTO 2: Solicitud CON documento adjunto al momento
+          asuntoRepLegal  = "Nueva Solicitud Permiso Medico con Documento - Sindicato SLIM n3";
+          tituloRepLegal  = "Solicitud de Permiso Medico con Documento Adjunto";
+          mensajeRepLegal = "El trabajador <strong>" + beneficiario.nombre + "</strong> ha registrado una solicitud de permiso medico con el documento de respaldo adjunto al momento del registro.";
+          datosRepLegal = {
+            "ID": idUnico,
+            "Trabajador": beneficiario.nombre,
+            "RUT": beneficiario.rut,
+            "Tipo Permiso": tipoPermiso,
+            "Fecha Inicio": fechaInicioNormalizada,
+            "Motivo": motivo,
+            "Estado": estadoFinal,
+            "Fecha Solicitud": fechaHoyCompleta.toLocaleDateString(),
+            "Documento": '<a href="' + urlDocFinal + '" style="color:#10b981;text-decoration:none;font-weight:600;">Ver Documento Adjunto</a>'
+          };
+        } else {
+          // EVENTO 1: Solicitud SIN documento
+          asuntoRepLegal  = "Nueva Solicitud Permiso Medico - Sindicato SLIM n3";
+          tituloRepLegal  = "Solicitud de Permiso Medico Sin Documento";
+          mensajeRepLegal = "El trabajador <strong>" + beneficiario.nombre + "</strong> ha registrado una solicitud de permiso medico. El documento de respaldo aun no ha sido adjuntado.";
+          datosRepLegal = {
+            "ID": idUnico,
+            "Trabajador": beneficiario.nombre,
+            "RUT": beneficiario.rut,
+            "Tipo Permiso": tipoPermiso,
+            "Fecha Inicio": fechaInicioNormalizada,
+            "Motivo": motivo,
+            "Estado": estadoFinal,
+            "Fecha Solicitud": fechaHoyCompleta.toLocaleDateString(),
+            "Documento": "Pendiente - El trabajador debe adjuntarlo posteriormente"
+          };
+        }
+
+        enviarCorreoEstilizado(CORREO_REPRESENTANTE_LEGAL, asuntoRepLegal, tituloRepLegal, mensajeRepLegal, datosRepLegal, "#10b981");
+        sheetPermisos.getRange(filaRepLegal, COL_PERM.NOTIFICADO_REP_LEGAL + 1).setValue(true);
+      } catch (eRepLegal) {
+        Logger.log("Advertencia solicitarPermisoMedico: Fallo envio Rep. Legal fila " + filaRepLegal + " - " + eRepLegal.toString());
+      }
       
       if (gestion === "Dirigente" && correoDirigente && correoDirigente.includes("@") && correoDirigente !== beneficiario.correo) {
         enviarCorreoEstilizado(
@@ -3261,40 +3927,48 @@ function solicitarPermisoMedico(rutGestor, tipoPermiso, fechaInicio, motivo, rut
         );
       }
 
-      // ✅ NUEVO: Copia al socio cuando el dirigente gestiona en su nombre
-      if (gestion === "Dirigente" && beneficiario.correo && beneficiario.correo.includes("@")) {
-        const mensajeSocioDirigente = urlDocFinal !== "Sin documento"
-          ? `Hola <strong>${beneficiario.nombre}</strong>, un dirigente ha solicitado un permiso médico a tu nombre y el documento de respaldo ha sido adjuntado exitosamente. No necesitas realizar ninguna acción adicional.`
-          : `Hola <strong>${beneficiario.nombre}</strong>, un dirigente ha solicitado un permiso médico a tu nombre.\n<strong>IMPORTANTE:</strong> Debes adjuntar el documento de respaldo en el historial del módulo una vez realizada la atención médica.`;
-
-        enviarCorreoEstilizado(
-          beneficiario.correo,
-          "Permiso Médico Solicitado - Sindicato SLIM n°3",
-          "Permiso Médico Ingresado",
-          mensajeSocioDirigente,
-          {
-            "ID": idUnico,
-            "Trabajador": beneficiario.nombre,
-            "RUT": beneficiario.rut,
-            "Tipo": tipoPermiso,
-            "Fecha Inicio": new Date(fechaInicio + 'T12:00:00').toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' }),
-            "Motivo": motivo,
-            "Dirigente": nomDirigente,
-            "Estado": estadoFinal,
-            "Fecha Solicitud": fechaHoy.toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' }),
-            "Documento": urlDocFinal !== "Sin documento"
-              ? '<a href="' + urlDocFinal + '" style="color:#10b981;text-decoration:none;font-weight:600;">📎 Ver Documento Adjunto</a>'
-              : "Pendiente de adjuntar desde el historial"
-          },
-          "#10b981"
-        );
+      // Copia al socio cuando el dirigente gestiona en su nombre
+      if (gestion === "Dirigente") {
+        if (esCorreoValido(beneficiario.correo)) {
+          var mensajeSocioDirigente = urlDocFinal !== "Sin documento"
+            ? "Hola <strong>" + beneficiario.nombre + "</strong>, un dirigente ha solicitado un permiso medico a tu nombre y el documento de respaldo ha sido adjuntado exitosamente. No necesitas realizar ninguna accion adicional."
+            : "Hola <strong>" + beneficiario.nombre + "</strong>, un dirigente ha solicitado un permiso medico a tu nombre.\n<strong>IMPORTANTE:</strong> Debes adjuntar el documento de respaldo en el historial del modulo una vez realizada la atencion medica.";
+          try {
+            enviarCorreoEstilizado(
+              beneficiario.correo,
+              "Permiso Medico Solicitado - Sindicato SLIM n3",
+              "Permiso Medico Ingresado",
+              mensajeSocioDirigente,
+              {
+                "ID": idUnico,
+                "Trabajador": beneficiario.nombre,
+                "RUT": beneficiario.rut,
+                "Tipo": tipoPermiso,
+                "Fecha Inicio": new Date(fechaInicio + 'T12:00:00').toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' }),
+                "Motivo": motivo,
+                "Dirigente": nomDirigente,
+                "Estado": estadoFinal,
+                "Fecha Solicitud": fechaHoy.toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' }),
+                "Documento": urlDocFinal !== "Sin documento"
+                  ? '<a href="' + urlDocFinal + '" style="color:#10b981;text-decoration:none;font-weight:600;">Ver Documento Adjunto</a>'
+                  : "Pendiente de adjuntar desde el historial"
+              },
+              "#10b981"
+            );
+            sheetPermisos.getRange(filaRepLegal, COL_PERM.NOTIFICADO_SOCIO + 1).setValue(true);
+          } catch (eSocioDirig) {
+            Logger.log("Advertencia solicitarPermisoMedico dirigente: Fallo envio socio fila " + filaRepLegal + " - " + eSocioDirig.toString());
+          }
+        } else {
+          sheetPermisos.getRange(filaRepLegal, COL_PERM.NOTIFICADO_SOCIO + 1).setValue("SIN_CORREO");
+        }
       }
-      
+
       return {
         success: true,
         message: urlDocFinal !== "Sin documento"
-          ? "Permiso médico registrado con documento adjunto exitosamente."
-          : "Permiso médico solicitado. No olvides adjuntar el documento de respaldo desde el historial."
+          ? "Permiso medico registrado con documento adjunto exitosamente."
+          : "Permiso medico solicitado. No olvides adjuntar el documento de respaldo desde el historial."
       };
       
     } catch (e) {
@@ -3396,41 +4070,53 @@ function adjuntarDocumentoPermiso(idPermiso, archivoData) {
       sheetPermisos.getRange(rowIndex, COL.ESTADO + 1).setValue(nuevoEstado);
       sheetPermisos.getRange(rowIndex, COL.FECHA_SUBIDA + 1).setValue(fechaSubida);
       sheetPermisos.getRange(rowIndex, COL.NOTIFICADO_REP_LEGAL + 1).setValue(false);
+      sheetPermisos.getRange(rowIndex, COL.NOTIFICADO_SOCIO + 1).setValue(false);
       
       // ========== ENVIAR CORREOS ==========
       if (esCorreoValido(beneficiario.correo)) {
-        enviarCorreoEstilizado(
-          beneficiario.correo,
-          "Documento Adjuntado - Sindicato SLIM n°3",
-          "Documento de Permiso Médico Adjuntado",
-          "Hola " + beneficiario.nombre + ", tu documento de respaldo ha sido adjuntado exitosamente.",
-          {
-            "ID": idPermiso,
-            "Tipo Permiso": tipoPermiso,
-            "Estado": nuevoEstado,
-            "Documento": '<a href="' + resultadoSubida.url + '" style="color: #10b981; text-decoration: none; font-weight: 600;">📎 Ver Documento</a>'  // ✅ CORRECCIÓN
-          },
-          "#10b981"
-        );
+        try {
+          enviarCorreoEstilizado(
+            beneficiario.correo,
+            "Documento Adjuntado - Sindicato SLIM n3",
+            "Documento de Permiso Medico Adjuntado",
+            "Hola " + beneficiario.nombre + ", tu documento de respaldo ha sido adjuntado exitosamente.",
+            {
+              "ID": idPermiso,
+              "Tipo Permiso": tipoPermiso,
+              "Estado": nuevoEstado,
+              "Documento": '<a href="' + resultadoSubida.url + '" style="color: #10b981; text-decoration: none; font-weight: 600;">Ver Documento</a>'
+            },
+            "#10b981"
+          );
+          sheetPermisos.getRange(rowIndex, COL.NOTIFICADO_SOCIO + 1).setValue(true);
+        } catch (eSocio) {
+          Logger.log("Advertencia adjuntarDocumentoPermiso: Fallo envio socio fila " + rowIndex + " - " + eSocio.toString());
+        }
+      } else {
+        sheetPermisos.getRange(rowIndex, COL.NOTIFICADO_SOCIO + 1).setValue("SIN_CORREO");
       }
       
-      enviarCorreoEstilizado(
-        CORREO_REPRESENTANTE_LEGAL,
-        "Documento Permiso Médico Adjuntado - Sindicato SLIM n°3",
-        "Documento de Permiso Médico Disponible",
-        "El trabajador <strong>" + beneficiario.nombre + "</strong> ha adjuntado el documento de respaldo para su permiso médico.",
-        {
-          "ID": idPermiso,
-          "Trabajador": beneficiario.nombre,
-          "RUT": beneficiario.rut,
-          "Tipo Permiso": tipoPermiso,
-          "Documento": '<a href="' + resultadoSubida.url + '" style="color: #10b981; font-weight: bold;">Disponible para revisión</a>',
-          "Fecha Adjunto": fechaSubida.toLocaleDateString()
-        },
-        "#475569"
-      );
-      
-      sheetPermisos.getRange(rowIndex, COL.NOTIFICADO_REP_LEGAL + 1).setValue(true);
+      try {
+        enviarCorreoEstilizado(
+          CORREO_REPRESENTANTE_LEGAL,
+          "Documento Permiso Medico Adjuntado - Sindicato SLIM n3",
+          "Documento de Permiso Medico Disponible",
+          "El trabajador <strong>" + beneficiario.nombre + "</strong> ha adjuntado el documento de respaldo para su permiso medico.",
+          {
+            "ID": idPermiso,
+            "Trabajador": beneficiario.nombre,
+            "RUT": beneficiario.rut,
+            "Tipo Permiso": tipoPermiso,
+            "Documento": '<a href="' + resultadoSubida.url + '" style="color: #10b981; font-weight: bold;">Disponible para revision</a>',
+            "Fecha Adjunto": fechaSubida.toLocaleDateString()
+          },
+          "#475569"
+        );
+        sheetPermisos.getRange(rowIndex, COL.NOTIFICADO_REP_LEGAL + 1).setValue(true);
+      } catch (eRepLegal) {
+        Logger.log("Advertencia adjuntarDocumentoPermiso: Fallo envio Rep. Legal fila " + rowIndex + " - " + eRepLegal.toString());
+        // Queda en false para ser reintentado por el trigger
+      }
       
       // ========== PREPARAR RESPUESTA ==========
       var respuesta = {
@@ -3601,11 +4287,53 @@ function registrarAsistencia(rutInput, nombreControl) {
   // obtenerUsuarioPorRut usa CacheService (TTL 10 min), evita leer BD_SLIMAPP
   // en cada llamada simultánea cuando hay mucha concurrencia.
   const usuario = obtenerUsuarioPorRut(rutInput);
-  if (!usuario.encontrado) {
-    return { success: false, message: "RUT no encontrado en el sistema." };
+  // ── VALIDACIÓN VENTANA HORARIA ──────────────────────────────────────────────
+  // Lee HORA_APERTURA (col E, índice 4) y HORA_CIERRE (col F, índice 5) desde
+  // la hoja PUNTOS_CONTROL del spreadsheet ASISTENCIA.
+  // Si ambas columnas tienen valor, bloquea el registro fuera de ese rango.
+  // Si están vacías, no se aplica restricción (retrocompatible).
+  try {
+    var ssAsistVentana = getSpreadsheet('ASISTENCIA');
+    var sheetPCtrl = ssAsistVentana.getSheetByName(CONFIG.HOJAS.PUNTOS_CONTROL);
+    if (sheetPCtrl && sheetPCtrl.getLastRow() > 1) {
+      var datosPC = sheetPCtrl.getDataRange().getDisplayValues();
+      for (var pc = 1; pc < datosPC.length; pc++) {
+        if (String(datosPC[pc][0]).trim() === nombreControl) {
+          var horaApertura = normalizarHoraHHmm(String(datosPC[pc][4] || '').trim());
+          var horaCierre   = normalizarHoraHHmm(String(datosPC[pc][5] || '').trim());
+          if (horaApertura && horaCierre) {
+            var horaActual = Utilities.formatDate(new Date(), 'America/Santiago', 'HH:mm');
+            var minActual   = parseInt(horaActual.split(':')[0], 10) * 60   + parseInt(horaActual.split(':')[1], 10);
+            var minApertura = parseInt(horaApertura.split(':')[0], 10) * 60 + parseInt(horaApertura.split(':')[1], 10);
+            var minCierre   = parseInt(horaCierre.split(':')[0], 10) * 60   + parseInt(horaCierre.split(':')[1], 10);
+            if (minActual < minApertura) {
+              return {
+                success: false,
+                ventanaCerrada: true,
+                tipoVentana: 'aun_no_abre',
+                horaApertura: horaApertura,
+                horaCierre: horaCierre,
+                message: 'El registro de asistencia aun no ha comenzado. El modulo abre a las ' + horaApertura + ' hrs.'
+              };
+            }
+            if (minActual > minCierre) {
+              return {
+                success: false,
+                ventanaCerrada: true,
+                tipoVentana: 'ya_cerro',
+                horaApertura: horaApertura,
+                horaCierre: horaCierre,
+                message: 'El registro de asistencia ha cerrado. El periodo de registro fue de ' + horaApertura + ' a ' + horaCierre + ' hrs.'
+              };
+            }
+          }
+          break;
+        }
+      }
+    }
+  } catch (eVentana) {
+    Logger.log('Advertencia: error verificando ventana horaria: ' + eVentana.toString());
   }
-
-  // ── OPTIMIZACIÓN 2: Sección crítica reducida al mínimo indispensable ────────
   // El lock protege SOLO la verificación de duplicado + escritura en BD_ASISTENCIA.
   // Sin correos adentro → tiempo de lock baja de ~7-10 seg a ~1.5-2 seg.
   // Capacidad estimada: de 3-4 usuarios simultáneos a ~15-20.
@@ -4365,7 +5093,6 @@ function validarUsuarioQR(rutInput) {
   }
 }
 
-// REEMPLAZAR CON ESTO:
 function checkinQR(rutInput, nombreAsamblea) {
   var lock = LockService.getScriptLock();
   if (lock.tryLock(30000)) {
@@ -4474,11 +5201,10 @@ function configurarTriggers() {
     .atHour(8)
     .create();
   
-  // REEMPLAZAR CON ESTO:
-  // Verificar cambios en credenciales — cada domingo a las 8 AM
+  // Verificar cambios en credenciales — diario a las 8 AM
   ScriptApp.newTrigger('verificarCambiosCredenciales')
     .timeBased()
-    .onWeekDay(ScriptApp.WeekDay.SUNDAY)
+    .everyDays(1)
     .atHour(8)
     .create();
 
@@ -4489,8 +5215,8 @@ function configurarTriggers() {
     .atHour(20)
     .create();
 
-  Logger.log("✅ Triggers configurados exitosamente");
-  Logger.log("Total de triggers activos: " + ScriptApp.getProjectTriggers().length);
+Logger.log("✅ Triggers configurados exitosamente");
+Logger.log("Total de triggers activos: " + ScriptApp.getProjectTriggers().length);
   
   return {
     success: true,
@@ -4501,10 +5227,249 @@ function configurarTriggers() {
       "procesarValidacionPrestamos (diario 8 AM)",
       "procesarPermisosComprobantesDevolucion (cada 1 hora)",
       "verificarCambiosPrestamos (diario 8 AM)",
-      "verificarCambiosCredenciales (domingos 8 AM)"
+      "verificarCambiosCredenciales (diario 8 AM)",
+      "verificarNotificacionesAsistencia (diario 20:00)"
     ]
   };
 }
+
+    // ==========================================
+    // REINTENTO NOTIFICACION SOCIO - PERMISOS MEDICOS
+    // Trigger: cada 30 minutos
+    // ==========================================
+    function reintentarNotificacionSocio() {
+      var COL = CONFIG.COLUMNAS.PERMISOS_MEDICOS;
+
+      try {
+        var sheetPermisos = getSheet('PERMISOS_MEDICOS', 'PERMISOS_MEDICOS');
+        var data = sheetPermisos.getDataRange().getValues();
+        var pendientes = 0;
+        var exitosos = 0;
+
+        for (var i = 1; i < data.length; i++) {
+          var fila = data[i];
+          var notificado = fila[COL.NOTIFICADO_SOCIO];
+          var estado     = String(fila[COL.ESTADO]);
+          var correo     = String(fila[COL.CORREO] || "");
+
+          // Saltar filas vacías, anuladas, ya notificadas o sin correo
+          if (estado === '' || estado === 'Anulado') continue;
+          if (notificado === true || String(notificado).toUpperCase() === 'TRUE') continue;
+          if (String(notificado).toUpperCase() === 'SIN_CORREO') continue;
+          if (!esCorreoValido(correo)) {
+            sheetPermisos.getRange(i + 1, COL.NOTIFICADO_SOCIO + 1).setValue("SIN_CORREO");
+            continue;
+          }
+
+          pendientes++;
+
+          var idPermiso   = String(fila[COL.ID]);
+          var nombre      = String(fila[COL.NOMBRE]);
+          var rut         = String(fila[COL.RUT]);
+          var tipoPermiso = String(fila[COL.TIPO_PERMISO]);
+          var urlDoc      = String(fila[COL.URL_DOCUMENTO]);
+          var motivo      = String(fila[COL.MOTIVO_DETALLE]);
+          var gestion     = String(fila[COL.GESTION]);
+
+          var fechaVal = fila[COL.FECHA_INICIO];
+          var fechaInicioStr = (fechaVal instanceof Date)
+            ? fechaVal.toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' })
+            : String(fechaVal);
+
+          var tieneDoc = urlDoc && urlDoc !== '' && urlDoc !== 'Sin documento';
+
+          try {
+            if (estado === 'Solicitado con Documento') {
+              // EVENTO 2: Reintento solicitud CON documento adjunto al momento
+              enviarCorreoEstilizado(
+                correo,
+                "Permiso Medico Registrado con Documento - Sindicato SLIM n3",
+                "Solicitud Completa con Documento",
+                "Hola <strong>" + nombre + "</strong>, tu permiso medico ha sido registrado correctamente y el documento medico de respaldo fue adjuntado en el mismo momento. No necesitas realizar ninguna accion adicional.",
+                {
+                  "ID": idPermiso,
+                  "Tipo Permiso": tipoPermiso,
+                  "Fecha Inicio": fechaInicioStr,
+                  "Estado": estado,
+                  "Documento": tieneDoc
+                    ? '<a href="' + urlDoc + '" style="color:#10b981;font-weight:bold;">Ver Documento Adjunto</a>'
+                    : "Sin documento"
+                },
+                "#10b981"
+              );
+            } else if (estado === 'Documento Adjuntado') {
+              // EVENTO 3: Reintento documento adjuntado posterior desde historial
+              enviarCorreoEstilizado(
+                correo,
+                "Documento de Respaldo Adjuntado - Sindicato SLIM n3",
+                "Documento de Permiso Medico Adjuntado",
+                "Hola " + nombre + ", has adjuntado tu documento medico de respaldo exitosamente a tu permiso existente.",
+                {
+                  "ID": idPermiso,
+                  "Tipo Permiso": tipoPermiso,
+                  "Fecha Inicio": fechaInicioStr,
+                  "Estado": estado,
+                  "Documento": tieneDoc
+                    ? '<a href="' + urlDoc + '" style="color:#10b981;font-weight:bold;">Ver Documento</a>'
+                    : "Sin documento"
+                },
+                "#10b981"
+              );
+            } else {
+              // Reintento del correo de nueva solicitud al socio
+              var esDirigente = gestion === "Dirigente";
+              var mensajeSocio = esDirigente
+                ? "Hola <strong>" + nombre + "</strong>, un dirigente ha solicitado un permiso medico a tu nombre. Recuerda adjuntar el documento de respaldo desde el historial del modulo una vez realizada la atencion medica."
+                : "Hola " + nombre + ", se ha registrado tu solicitud de permiso medico.\n<strong>IMPORTANTE:</strong> Debes adjuntar el documento de respaldo en el historial del modulo una vez realizada la atencion medica.";
+              enviarCorreoEstilizado(
+                correo,
+                "Solicitud Permiso Medico - Sindicato SLIM n3",
+                "Permiso Medico Solicitado",
+                mensajeSocio,
+                {
+                  "ID": idPermiso,
+                  "Trabajador": nombre,
+                  "RUT": rut,
+                  "Tipo": tipoPermiso,
+                  "Fecha Inicio": fechaInicioStr,
+                  "Motivo": motivo,
+                  "Estado": estado
+                },
+                "#10b981"
+              );
+            }
+
+            sheetPermisos.getRange(i + 1, COL.NOTIFICADO_SOCIO + 1).setValue(true);
+            exitosos++;
+            Utilities.sleep(600);
+
+          } catch (eEmail) {
+            Logger.log("reintentarNotificacionSocio - Fila " + (i + 1) + " (" + idPermiso + "): " + eEmail.toString());
+          }
+        }
+
+        Logger.log("reintentarNotificacionSocio: " + pendientes + " pendientes, " + exitosos + " enviados.");
+
+      } catch (e) {
+        Logger.log("Error general en reintentarNotificacionSocio: " + e.toString());
+      }
+    }
+
+    // ==========================================
+    // REINTENTO NOTIFICACION REPRESENTANTE LEGAL - PERMISOS MEDICOS
+    // Trigger: cada 30 minutos
+    // ==========================================
+    function reintentarNotificacionRepLegal() {
+      var CORREO_REPRESENTANTE_LEGAL = CONFIG.CORREOS.REPRESENTANTE_LEGAL;
+      var COL = CONFIG.COLUMNAS.PERMISOS_MEDICOS;
+
+      try {
+        var sheetPermisos = getSheet('PERMISOS_MEDICOS', 'PERMISOS_MEDICOS');
+        var data = sheetPermisos.getDataRange().getValues();
+        var pendientes = 0;
+        var exitosos = 0;
+
+        for (var i = 1; i < data.length; i++) {
+          var fila = data[i];
+          var notificado = fila[COL.NOTIFICADO_REP_LEGAL];
+          var estado = String(fila[COL.ESTADO]);
+
+          if (estado === '' || estado === 'Anulado') continue;
+          if (notificado === true || String(notificado).toUpperCase() === 'TRUE') continue;
+
+          pendientes++;
+
+          var idPermiso   = String(fila[COL.ID]);
+          var nombre      = String(fila[COL.NOMBRE]);
+          var rut         = String(fila[COL.RUT]);
+          var tipoPermiso = String(fila[COL.TIPO_PERMISO]);
+          var urlDoc      = String(fila[COL.URL_DOCUMENTO]);
+          var motivo      = String(fila[COL.MOTIVO_DETALLE]);
+
+          var fechaVal = fila[COL.FECHA_INICIO];
+          var fechaInicioStr = (fechaVal instanceof Date)
+            ? fechaVal.toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' })
+            : String(fechaVal);
+
+          var tieneDoc = urlDoc && urlDoc !== '' && urlDoc !== 'Sin documento';
+
+          try {
+            if (estado === 'Solicitado con Documento') {
+              // EVENTO 2: Solicitud con documento adjunto al momento
+              enviarCorreoEstilizado(
+                CORREO_REPRESENTANTE_LEGAL,
+                "Nueva Solicitud Permiso Medico con Documento - Sindicato SLIM n3",
+                "Solicitud de Permiso Medico con Documento Adjunto",
+                "El trabajador <strong>" + nombre + "</strong> ha registrado una solicitud de permiso medico con el documento de respaldo adjunto al momento del registro.",
+                {
+                  "ID": idPermiso,
+                  "Trabajador": nombre,
+                  "RUT": rut,
+                  "Tipo Permiso": tipoPermiso,
+                  "Fecha Inicio": fechaInicioStr,
+                  "Estado": estado,
+                  "Documento": tieneDoc
+                    ? '<a href="' + urlDoc + '" style="color:#10b981;font-weight:bold;">Ver Documento Adjunto</a>'
+                    : "Sin documento"
+                },
+                "#10b981"
+              );
+            } else if (estado === 'Documento Adjuntado') {
+              // EVENTO 3: Documento adjuntado posteriormente desde historial
+              enviarCorreoEstilizado(
+                CORREO_REPRESENTANTE_LEGAL,
+                "Documento de Respaldo Adjuntado - Permiso Medico - Sindicato SLIM n3",
+                "Documento de Permiso Medico Disponible",
+                "El trabajador <strong>" + nombre + "</strong> ha adjuntado el documento medico de respaldo a su permiso existente.",
+                {
+                  "ID": idPermiso,
+                  "Trabajador": nombre,
+                  "RUT": rut,
+                  "Tipo Permiso": tipoPermiso,
+                  "Fecha Inicio": fechaInicioStr,
+                  "Estado": estado,
+                  "Documento": tieneDoc
+                    ? '<a href="' + urlDoc + '" style="color:#10b981;font-weight:bold;">Ver Documento Adjunto</a>'
+                    : "Sin documento"
+                },
+                "#475569"
+              );
+            } else {
+              // EVENTO 1: Solicitud sin documento
+              enviarCorreoEstilizado(
+                CORREO_REPRESENTANTE_LEGAL,
+                "Nueva Solicitud Permiso Medico - Sindicato SLIM n3",
+                "Solicitud de Permiso Medico Sin Documento",
+                "El trabajador <strong>" + nombre + "</strong> ha registrado una solicitud de permiso medico. El documento de respaldo aun no ha sido adjuntado.",
+                {
+                  "ID": idPermiso,
+                  "Trabajador": nombre,
+                  "RUT": rut,
+                  "Tipo Permiso": tipoPermiso,
+                  "Fecha Inicio": fechaInicioStr,
+                  "Motivo": motivo,
+                  "Estado": estado,
+                  "Documento": "Pendiente - El trabajador debe adjuntarlo posteriormente"
+                },
+                "#10b981"
+              );
+            }
+
+            sheetPermisos.getRange(i + 1, COL.NOTIFICADO_REP_LEGAL + 1).setValue(true);
+            exitosos++;
+            Utilities.sleep(600);
+
+          } catch (eEmail) {
+            Logger.log("reintentarNotificacionRepLegal - Fila " + (i + 1) + " (" + idPermiso + "): " + eEmail.toString());
+          }
+        }
+
+        Logger.log("reintentarNotificacionRepLegal: " + pendientes + " pendientes, " + exitosos + " enviados.");
+
+      } catch (e) {
+        Logger.log("Error general en reintentarNotificacionRepLegal: " + e.toString());
+      }
+    }
 
 /**
  * Función para obtener el correo de un usuario por RUT
@@ -4603,70 +5568,6 @@ function corregirPermisosJustificacionesExistentes() {
     return { success: false, message: error.message };
   }
 }
-
-    // ==========================================
-    // SISTEMA DE MÉTRICAS Y MONITOREO
-    // ==========================================
-
-    /**
-     * Registra métricas de uso para análisis de performance
-     */
-    function registrarMetrica(operacion, duracion, exito) {
-      try {
-        var properties = PropertiesService.getScriptProperties();
-        var fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-        var key = 'metrics_' + fecha + '_' + operacion;
-        
-        var existing = properties.getProperty(key);
-        var metrics = existing ? JSON.parse(existing) : { count: 0, totalDuration: 0, errors: 0 };
-        
-        metrics.count++;
-        metrics.totalDuration += duracion;
-        if (!exito) metrics.errors++;
-        
-        properties.setProperty(key, JSON.stringify(metrics));
-      } catch (e) {
-        // No hacer nada si falla el logging
-        Logger.log('Error logging metrics: ' + e);
-      }
-    }
-
-    /**
-     * Wrapper para medir performance de funciones críticas
-     */
-    function medirPerformance(nombreFuncion, funcionCallback) {
-      var inicio = new Date().getTime();
-      var exito = true;
-      
-      try {
-        return funcionCallback();
-      } catch (e) {
-        exito = false;
-        throw e;
-      } finally {
-        var duracion = new Date().getTime() - inicio;
-        registrarMetrica(nombreFuncion, duracion, exito);
-      }
-    }
-
-    /**
-     * Ver métricas del día (ejecutar manualmente desde editor)
-     */
-    function verMetricasHoy() {
-      var properties = PropertiesService.getScriptProperties();
-      var fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-      var allProps = properties.getProperties();
-      
-      Logger.log('=== MÉTRICAS ' + fecha + ' ===');
-      for (var key in allProps) {
-        if (key.startsWith('metrics_' + fecha)) {
-          var operacion = key.replace('metrics_' + fecha + '_', '');
-          var data = JSON.parse(allProps[key]);
-          Logger.log(operacion + ': ' + data.count + ' llamadas, avg: ' + 
-                    (data.totalDuration / data.count).toFixed(0) + 'ms, errores: ' + data.errors);
-        }
-      }
-    }
 
     // ==========================================
     // CONSULTA DE ID CREDENCIAL
@@ -5045,7 +5946,7 @@ function obtenerEstadoCredencialPorRut(rutInput) {
 
 /**
  * Trigger semanal: detecta cambios de estado en credenciales y envía notificaciones
- * Se ejecuta automáticamente cada domingo a las 8am (configurar en configurarTriggers)
+ * Se ejecuta automáticamente cada día a las 8am (configurar en configurarTriggers)
  */
 function verificarCambiosCredenciales() {
   const ESTADOS_CON_NOTIFICACION = ["ENTREGADO", "DISPONIBLE", "SOLICITADO", "NO VIGENTE", "DATOS INCORRECTOS", "REIMPRIMIR"];
@@ -5304,4 +6205,1215 @@ function enviarNotificacionCredencial(correo, nombre, estadoNuevo, rut) {
     htmlBody: htmlBody,
     name: "Sindicato SLIM N°3"
   });
+}
+
+// ==========================================
+// MÓDULO: GAMIFICACIÓN — SLIM QUEST
+// ==========================================
+
+const GRADOS_SLIM = [
+  { nombre: "Aspirante",  minXP: 0,     maxXP: 1500,  icono: "🌱" },
+  { nombre: "Aprendiz",   minXP: 1501,  maxXP: 4500,  icono: "⚙️" },
+  { nombre: "Trabajador", minXP: 4501,  maxXP: 10000, icono: "🔩" },
+  { nombre: "Defensor",   minXP: 10001, maxXP: 18000, icono: "🛡️" },
+  { nombre: "Negociador", minXP: 18001, maxXP: 30000, icono: "⚖️" },
+  { nombre: "Dirigente",  minXP: 30001, maxXP: 999999, icono: "🏆" }
+];
+
+function calcularGrado_(xp) {
+  for (let i = GRADOS_SLIM.length - 1; i >= 0; i--) {
+    if (xp >= GRADOS_SLIM[i].minXP) return GRADOS_SLIM[i];
+  }
+  return GRADOS_SLIM[0];
+}
+
+/**
+ * Obtiene el progreso completo de un socio en SLIM Quest.
+ * Si el socio no tiene registro aún, lo crea automáticamente.
+ */
+function getProgresoSocio(rutInput) {
+  try {
+    const rutLimpio = cleanRut(rutInput);
+    if (!rutLimpio) return { success: false, message: "RUT inválido." };
+
+    const sheet = getSheet('GAMIFICACION', 'GAMIFICACION');
+    if (!sheet) return { success: false, message: "Módulo de gamificación no configurado." };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow >= 2) {
+      const data = sheet.getRange(2, 1, lastRow - 1, 11).getDisplayValues();
+      const COL = CONFIG.COLUMNAS.GAMIFICACION;
+
+      for (let i = 0; i < data.length; i++) {
+        if (cleanRut(data[i][COL.RUT]) === rutLimpio) {
+          const estado = String(data[i][COL.ESTADO] || "ACTIVO").toUpperCase();
+
+          if (estado === "DESVINCULADO") {
+            return {
+              success: false,
+              desvinculado: true,
+              message: "Tu participación en SLIM Quest está suspendida porque tu estado en el sindicato es DESVINCULADO. Tu historial de XP y logros queda guardado.",
+              xp: parseInt(data[i][COL.XP_TOTAL]) || 0,
+              grado: data[i][COL.GRADO] || "Aspirante"
+            };
+          }
+
+          const xp = parseInt(data[i][COL.XP_TOTAL]) || 0;
+          const grado = calcularGrado_(xp);
+          const gradoSiguiente = GRADOS_SLIM.find(g => g.minXP > xp) || null;
+          let logros = [];
+          try { logros = JSON.parse(data[i][COL.LOGROS] || "[]"); } catch(e) {}
+
+          return {
+            success: true,
+            rut: data[i][COL.RUT],
+            nombre: data[i][COL.NOMBRE],
+            xp: xp,
+            grado: grado,
+            gradoSiguiente: gradoSiguiente,
+            xpParaSiguiente: gradoSiguiente ? gradoSiguiente.minXP - xp : 0,
+            racha: parseInt(data[i][COL.RACHA_ACTUAL]) || 0,
+            rachaMax: parseInt(data[i][COL.RACHA_MAX]) || 0,
+            logros: logros,
+            quizzesCompletados: parseInt(data[i][COL.QUIZZES_COMPLETADOS]) || 0,
+            quizHoy: data[i][COL.QUIZ_ULTIMO_DIA] || "",
+            ultimaActividad: data[i][COL.ULTIMA_ACTIVIDAD] || "",
+            estado: estado
+          };
+        }
+      }
+    }
+
+    const usuarioData = obtenerUsuarioPorRut(rutInput);
+    if (!usuarioData.encontrado) {
+      return { success: false, message: "RUT no encontrado en el sistema." };
+    }
+    return inicializarSocioGamificacion_(rutLimpio, usuarioData.nombre || "Socio", usuarioData.estado || "ACTIVO");
+
+  } catch (e) {
+    Logger.log("❌ Error en getProgresoSocio: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+function inicializarSocioGamificacion_(rutLimpio, nombreSocio, estadoSocio) {
+  try {
+    const sheet = getSheet('GAMIFICACION', 'GAMIFICACION');
+    const hoy = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy HH:mm");
+    const estado = estadoSocio || "ACTIVO";
+
+    sheet.appendRow([
+      rutLimpio, nombreSocio, 0, "Aspirante", "[]",
+      0, 0, hoy, "", 0, estado, 0
+    ]);
+
+    Logger.log("✅ Socio inicializado en SLIM Quest: " + rutLimpio + " (" + nombreSocio + ") — " + estado);
+
+    return {
+      success: true,
+      rut: rutLimpio,
+      nombre: nombreSocio,
+      xp: 0,
+      grado: GRADOS_SLIM[0],
+      gradoSiguiente: GRADOS_SLIM[1],
+      xpParaSiguiente: GRADOS_SLIM[1].minXP,
+      racha: 0,
+      rachaMax: 0,
+      logros: [],
+      quizzesCompletados: 0,
+      quizHoy: "",
+      ultimaActividad: hoy,
+      estado: estado,
+      recienCreado: true
+    };
+  } catch (e) {
+    Logger.log("❌ Error en inicializarSocioGamificacion_: " + e.toString());
+    return { success: false, message: "Error al inicializar: " + e.toString() };
+  }
+}
+
+function guardarXP(rutInput, cantidad, motivo) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return { success: false, message: "Servidor ocupado, intenta nuevamente." };
+  try {
+    const rutLimpio = cleanRut(rutInput);
+    const sheet = getSheet('GAMIFICACION', 'GAMIFICACION');
+    const lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      lock.releaseLock();
+      inicializarSocioGamificacion_(rutInput);
+      return guardarXP(rutInput, cantidad, motivo);
+    }
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 10).getDisplayValues();
+    const COL = CONFIG.COLUMNAS.GAMIFICACION;
+    const hoy = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy HH:mm");
+
+    for (let i = 0; i < data.length; i++) {
+      if (cleanRut(data[i][COL.RUT]) === rutLimpio) {
+        const xpActual = parseInt(data[i][COL.XP_TOTAL]) || 0;
+        const xpNuevo  = xpActual + cantidad;
+        const gradoAnterior = data[i][COL.GRADO];
+        const gradoNuevo    = calcularGrado_(xpNuevo);
+        const filaReal = i + 2;
+
+        sheet.getRange(filaReal, COL.XP_TOTAL + 1).setValue(xpNuevo);
+        sheet.getRange(filaReal, COL.GRADO + 1).setValue(gradoNuevo.nombre);
+        sheet.getRange(filaReal, COL.ULTIMA_ACTIVIDAD + 1).setValue(hoy);
+
+        Logger.log("✅ XP [" + motivo + "]: " + rutLimpio + " +" + cantidad + "XP → Total: " + xpNuevo + " | Grado: " + gradoNuevo.nombre);
+
+        return {
+          success: true,
+          xpSumado: cantidad,
+          xpTotal: xpNuevo,
+          grado: gradoNuevo,
+          subioGrado: gradoAnterior !== gradoNuevo.nombre,
+          gradoAnterior: gradoAnterior,
+          motivo: motivo
+        };
+      }
+    }
+
+    lock.releaseLock();
+    inicializarSocioGamificacion_(rutInput);
+    return guardarXP(rutInput, cantidad, motivo);
+
+  } catch (e) {
+    Logger.log("❌ Error en guardarXP: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  } finally {
+    if (lock.hasLock()) lock.releaseLock();
+  }
+}
+
+function otorgarLogro(rutInput, codigoLogro, nombreLogro, iconoLogro) {
+  try {
+    const rutLimpio = cleanRut(rutInput);
+    const sheet = getSheet('GAMIFICACION', 'GAMIFICACION');
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, message: "Socio no registrado en gamificación." };
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 10).getDisplayValues();
+    const COL = CONFIG.COLUMNAS.GAMIFICACION;
+
+    for (let i = 0; i < data.length; i++) {
+      if (cleanRut(data[i][COL.RUT]) === rutLimpio) {
+        let logros = [];
+        try { logros = JSON.parse(data[i][COL.LOGROS] || "[]"); } catch(e) {}
+
+        if (logros.some(l => l.codigo === codigoLogro)) {
+          return { success: true, nuevo: false };
+        }
+
+        const fecha = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy");
+        logros.push({ codigo: codigoLogro, nombre: nombreLogro, icono: iconoLogro, fecha: fecha });
+        sheet.getRange(i + 2, COL.LOGROS + 1).setValue(JSON.stringify(logros));
+
+        Logger.log("🏅 Logro [" + codigoLogro + "] otorgado a " + rutLimpio);
+        return { success: true, nuevo: true, logro: { codigo: codigoLogro, nombre: nombreLogro, icono: iconoLogro } };
+      }
+    }
+    return { success: false, message: "Socio no encontrado en gamificación." };
+  } catch (e) {
+    Logger.log("❌ Error en otorgarLogro: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+function getLeaderboard(rutInput) {
+  try {
+    const sheet = getSheet('GAMIFICACION', 'GAMIFICACION');
+    if (!sheet) return { success: false, message: "Hoja no encontrada." };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: true, top10: [], miPosicion: null };
+
+    const COL      = CONFIG.COLUMNAS.GAMIFICACION;
+    const data     = sheet.getRange(2, 1, lastRow - 1, 12).getDisplayValues();
+    const rutLimpio = rutInput ? cleanRut(rutInput) : "";
+
+    const lista = [];
+    for (var i = 0; i < data.length; i++) {
+      var xp     = parseInt(data[i][COL.XP_TOTAL]) || 0;
+      var estado = String(data[i][COL.ESTADO]).toUpperCase().trim();
+      if (estado === "DESVINCULADO") continue;
+      lista.push({
+        rut:    cleanRut(data[i][COL.RUT]),
+        nombre: data[i][COL.NOMBRE] || "Socio",
+        xp:     xp,
+        grado:  calcularGrado_(xp)
+      });
+    }
+
+    lista.sort(function(a, b) { return b.xp - a.xp; });
+
+    var top10 = lista.slice(0, 10).map(function(s, idx) {
+      var partes  = s.nombre.trim().split(" ");
+      var visible = partes[0] + (partes[1] ? " " + partes[1] : "") + (partes[2] ? " " + partes[2][0] + "." : "");
+      return {
+        posicion: idx + 1,
+        nombre:   visible,
+        xp:       s.xp,
+        grado:    s.grado,
+        esMio:    (s.rut === rutLimpio)
+      };
+    });
+
+    var miPosicion = null;
+    if (rutLimpio) {
+      var miIdx = lista.findIndex(function(s) { return s.rut === rutLimpio; });
+      if (miIdx >= 0) {
+        miPosicion = {
+          posicion: miIdx + 1,
+          xp:       lista[miIdx].xp,
+          grado:    lista[miIdx].grado
+        };
+      }
+    }
+
+    Logger.log("🏆 Leaderboard | top10: " + top10.length + " | RUT: " + rutLimpio);
+    return { success: true, top10: top10, miPosicion: miPosicion };
+
+  } catch (e) {
+    Logger.log("❌ Error en getLeaderboard: " + e.toString());
+    return { success: false, message: e.toString() };
+  }
+}
+
+function sincronizarSociosGamificacion() {
+  try {
+    Logger.log("🔄 Iniciando sincronización de socios con SLIM Quest...");
+
+    const sheetUsuarios = getSheet('USUARIOS', 'USUARIOS');
+    const sheetGame     = getSheet('GAMIFICACION', 'GAMIFICACION');
+    if (!sheetUsuarios || !sheetGame) {
+      Logger.log("❌ No se pudieron obtener las hojas necesarias.");
+      return;
+    }
+
+    const COL_U   = CONFIG.COLUMNAS.USUARIOS;
+    const COL_G   = CONFIG.COLUMNAS.GAMIFICACION;
+    const hoy     = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy HH:mm");
+
+    const lastRowGame = sheetGame.getLastRow();
+    const mapaGame    = {};
+
+    if (lastRowGame >= 2) {
+      const dataGame = sheetGame.getRange(2, 1, lastRowGame - 1, 11).getDisplayValues();
+      for (let i = 0; i < dataGame.length; i++) {
+        const rut = cleanRut(dataGame[i][COL_G.RUT]);
+        if (rut) {
+          mapaGame[rut] = {
+            fila: i + 2,
+            nombre: dataGame[i][COL_G.NOMBRE],
+            estado: dataGame[i][COL_G.ESTADO]
+          };
+        }
+      }
+    }
+
+    const lastRowU  = sheetUsuarios.getLastRow();
+    if (lastRowU < 2) {
+      Logger.log("ℹ️ No hay socios en BD_SLIMAPP.");
+      return;
+    }
+    const dataU = sheetUsuarios.getRange(2, 1, lastRowU - 1, COL_U.ESTADO + 1).getDisplayValues();
+
+    let creados      = 0;
+    let actualizados = 0;
+    let sinRut       = 0;
+    const nuevasFilas = [];
+
+    for (let i = 0; i < dataU.length; i++) {
+      const rutLimpio = cleanRut(dataU[i][COL_U.RUT]);
+      if (!rutLimpio) { sinRut++; continue; }
+
+      const nombre = String(dataU[i][COL_U.NOMBRE] || "Socio").trim();
+      const estado = String(dataU[i][COL_U.ESTADO] || "ACTIVO").trim().toUpperCase();
+      const estadoNorm = (estado === "ACTIVO" || estado === "SI" || estado === "TRUE") ? "ACTIVO" : "DESVINCULADO";
+
+      if (mapaGame[rutLimpio]) {
+        const registroActual = mapaGame[rutLimpio];
+        const nombreCambio = registroActual.nombre !== nombre;
+        const estadoCambio = String(registroActual.estado || "").toUpperCase() !== estadoNorm;
+
+        if (nombreCambio || estadoCambio) {
+          sheetGame.getRange(registroActual.fila, COL_G.NOMBRE + 1).setValue(nombre);
+          sheetGame.getRange(registroActual.fila, COL_G.ESTADO + 1).setValue(estadoNorm);
+          actualizados++;
+          Logger.log("🔄 Actualizado: " + rutLimpio + " | Estado: " + estadoNorm);
+        }
+      } else {
+        nuevasFilas.push([
+          rutLimpio, nombre, 0, "Aspirante", "[]",
+          0, 0, hoy, "", 0, estadoNorm, 0
+        ]);
+        creados++;
+      }
+    }
+
+    if (nuevasFilas.length > 0) {
+      const primeraFilaLibre = sheetGame.getLastRow() + 1;
+      sheetGame.getRange(primeraFilaLibre, 1, nuevasFilas.length, 12).setValues(nuevasFilas);
+    }
+
+    Logger.log("✅ Socios creados: " + creados + " | Actualizados: " + actualizados + " | Sin RUT: " + sinRut);
+
+  } catch (e) {
+    Logger.log("❌ Error en sincronizarSociosGamificacion: " + e.toString());
+  }
+}
+
+function configurarTriggerGamificacion() {
+  ScriptApp.getProjectTriggers().forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === "sincronizarSociosGamificacion") {
+      ScriptApp.deleteTrigger(trigger);
+      Logger.log("🗑️ Trigger anterior eliminado.");
+    }
+  });
+
+  ScriptApp.newTrigger("sincronizarSociosGamificacion")
+    .timeBased()
+    .everyDays(1)
+    .atHour(1)
+    .create();
+
+  Logger.log("✅ Trigger diario configurado: sincronizarSociosGamificacion todos los días a la 1am.");
+}
+
+function obtenerPreguntasQuiz(rutInput, cantidad) {
+  try {
+    cantidad = cantidad || 5;
+    const sheet = getSheet('GAMIFICACION', 'BANCO_PREGUNTAS');
+    if (!sheet) return { success: false, message: "Banco de preguntas no disponible." };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, message: "No hay preguntas cargadas aún." };
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 13).getDisplayValues();
+    const COL  = CONFIG.COLUMNAS.BANCO_PREGUNTAS;
+
+    let gradoActual = "Aspirante";
+    try {
+      const progreso = getProgresoSocio(rutInput);
+      if (progreso.success && progreso.grado) gradoActual = progreso.grado.nombre;
+    } catch(e) {}
+
+    const pesos = {
+      "Aspirante":  { BASICO: 4, INTERMEDIO: 1, AVANZADO: 0 },
+      "Aprendiz":   { BASICO: 3, INTERMEDIO: 2, AVANZADO: 0 },
+      "Trabajador": { BASICO: 2, INTERMEDIO: 2, AVANZADO: 1 },
+      "Defensor":   { BASICO: 1, INTERMEDIO: 3, AVANZADO: 1 },
+      "Negociador": { BASICO: 1, INTERMEDIO: 2, AVANZADO: 2 },
+      "Dirigente":  { BASICO: 0, INTERMEDIO: 2, AVANZADO: 3 }
+    };
+    const pesoActual = pesos[gradoActual] || pesos["Aspirante"];
+
+    const porNivel = { BASICO: [], INTERMEDIO: [], AVANZADO: [] };
+
+    for (let i = 0; i < data.length; i++) {
+      const activa = String(data[i][COL.ACTIVA]).toUpperCase();
+      if (activa !== "TRUE" && activa !== "VERDADERO" && activa !== "1") continue;
+
+      const nivel = String(data[i][COL.NIVEL]).toUpperCase().trim();
+      const pregunta = {
+        id:          data[i][COL.ID],
+        categoria:   data[i][COL.CATEGORIA],
+        nivel:       nivel,
+        pregunta:    data[i][COL.PREGUNTA],
+        opciones: {
+          A: data[i][COL.OPCION_A],
+          B: data[i][COL.OPCION_B],
+          C: data[i][COL.OPCION_C],
+          D: data[i][COL.OPCION_D]
+        },
+        respuesta:   data[i][COL.RESPUESTA].toUpperCase().trim(),
+        explicacion: data[i][COL.EXPLICACION],
+        xp:          parseInt(data[i][COL.XP]) || 20,
+        fuente:      data[i][COL.FUENTE]
+      };
+
+      if (nivel === "DIRIGENTE") continue;
+      if (porNivel[nivel] !== undefined) porNivel[nivel].push(pregunta);
+    }
+
+    function sacarAleatorio(arr, n) {
+      const copia = arr.slice();
+      const resultado = [];
+      for (let i = 0; i < n && copia.length > 0; i++) {
+        const idx = Math.floor(Math.random() * copia.length);
+        resultado.push(copia.splice(idx, 1)[0]);
+      }
+      return resultado;
+    }
+
+    let seleccion = [];
+    seleccion = seleccion.concat(sacarAleatorio(porNivel.BASICO,      pesoActual.BASICO));
+    seleccion = seleccion.concat(sacarAleatorio(porNivel.INTERMEDIO,  pesoActual.INTERMEDIO));
+    seleccion = seleccion.concat(sacarAleatorio(porNivel.AVANZADO,    pesoActual.AVANZADO));
+
+    if (seleccion.length < cantidad) {
+      const usados  = new Set(seleccion.map(p => p.id));
+      const restantes = data
+        .filter(row => {
+          const activa = String(row[COL.ACTIVA]).toUpperCase();
+          return (activa === "TRUE" || activa === "VERDADERO" || activa === "1")
+                 && !usados.has(row[COL.ID]);
+        })
+        .map(row => ({
+          id: row[COL.ID], categoria: row[COL.CATEGORIA],
+          nivel: String(row[COL.NIVEL]).toUpperCase().trim(),
+          pregunta: row[COL.PREGUNTA],
+          opciones: { A: row[COL.OPCION_A], B: row[COL.OPCION_B], C: row[COL.OPCION_C], D: row[COL.OPCION_D] },
+          respuesta: String(row[COL.RESPUESTA]).toUpperCase().trim(),
+          explicacion: row[COL.EXPLICACION],
+          xp: parseInt(row[COL.XP]) || 20,
+          fuente: row[COL.FUENTE]
+        }));
+      seleccion = seleccion.concat(sacarAleatorio(restantes, cantidad - seleccion.length));
+    }
+
+    for (let i = seleccion.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [seleccion[i], seleccion[j]] = [seleccion[j], seleccion[i]];
+    }
+
+    Logger.log("✅ Quiz generado para " + rutInput + " | Grado: " + gradoActual + " | Preguntas: " + seleccion.length);
+    return { success: true, preguntas: seleccion.slice(0, cantidad), gradoActual: gradoActual };
+
+  } catch (e) {
+    Logger.log("❌ Error en obtenerPreguntasQuiz: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+function registrarResultadoQuiz(rutInput, correctas, xpGanado) {
+  try {
+    const rutLimpio = cleanRut(rutInput);
+    if (!rutLimpio) return { success: false, message: "RUT inválido." };
+
+    const sheet   = getSheet('GAMIFICACION', 'GAMIFICACION');
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, message: "Socio no inicializado." };
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 12).getDisplayValues();
+    const COL  = CONFIG.COLUMNAS.GAMIFICACION;
+    const hoy  = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy");
+    const ahora = Utilities.formatDate(new Date(), "America/Santiago", "dd/MM/yyyy HH:mm");
+
+    for (let i = 0; i < data.length; i++) {
+      if (cleanRut(data[i][COL.RUT]) !== rutLimpio) continue;
+
+      const filaReal          = i + 2;
+      const quizUltimoDia     = String(data[i][COL.QUIZ_ULTIMO_DIA] || "").trim();
+
+      if (quizUltimoDia === hoy) {
+        return { success: false, message: "Ya completaste el quiz de hoy. ¡Vuelve mañana!" };
+      }
+
+      const rachaActual = parseInt(data[i][COL.RACHA_ACTUAL]) || 0;
+      const rachaMax    = parseInt(data[i][COL.RACHA_MAX])    || 0;
+      const ayer        = new Date();
+      ayer.setDate(ayer.getDate() - 1);
+      const ayerStr    = Utilities.formatDate(ayer, "America/Santiago", "dd/MM/yyyy");
+      const nuevaRacha = (quizUltimoDia === ayerStr) ? rachaActual + 1 : 1;
+      const nuevaRachaMax = Math.max(nuevaRacha, rachaMax);
+
+      const BONOS_RACHA = { 3: 20, 7: 50, 14: 80, 21: 100, 30: 160, 60: 280, 100: 500 };
+      let xpFinal    = xpGanado;
+      let xpBonoRacha = 0;
+      if (BONOS_RACHA[nuevaRacha] !== undefined) {
+        xpBonoRacha = BONOS_RACHA[nuevaRacha];
+        xpFinal += xpBonoRacha;
+      } else if (nuevaRacha > 100 && nuevaRacha % 7 === 0) {
+        xpBonoRacha = 100;
+        xpFinal += xpBonoRacha;
+      }
+
+      const xpActual          = parseInt(data[i][COL.XP_TOTAL])            || 0;
+      const xpNuevo           = xpActual + xpFinal;
+      const gradoNuevo        = calcularGrado_(xpNuevo);
+      const quizzesAnt        = parseInt(data[i][COL.QUIZZES_COMPLETADOS]) || 0;
+      const quizzesPerfAnt    = parseInt(data[i][COL.QUIZZES_PERFECTOS])   || 0;
+      const quizzesTotalNuevo = quizzesAnt + 1;
+      const quizesPerfNuevo   = correctas === 5 ? quizzesPerfAnt + 1 : quizzesPerfAnt;
+
+      sheet.getRange(filaReal, COL.XP_TOTAL + 1).setValue(xpNuevo);
+      sheet.getRange(filaReal, COL.GRADO + 1).setValue(gradoNuevo.nombre);
+      sheet.getRange(filaReal, COL.RACHA_ACTUAL + 1).setValue(nuevaRacha);
+      sheet.getRange(filaReal, COL.RACHA_MAX + 1).setValue(nuevaRachaMax);
+      sheet.getRange(filaReal, COL.QUIZ_ULTIMO_DIA + 1).setValue(hoy);
+      sheet.getRange(filaReal, COL.QUIZZES_COMPLETADOS + 1).setValue(quizzesTotalNuevo);
+      sheet.getRange(filaReal, COL.ULTIMA_ACTIVIDAD + 1).setValue(ahora);
+      sheet.getRange(filaReal, COL.QUIZZES_PERFECTOS + 1).setValue(quizesPerfNuevo);
+
+      const logrosNuevos = [];
+      function evalLogro(codigo, nombre, icono) {
+        var r = otorgarLogro(rutInput, codigo, nombre, icono);
+        if (r.success && r.nuevo) logrosNuevos.push(r.logro);
+      }
+
+      if (quizzesTotalNuevo === 1)   evalLogro("PRIMER_QUIZ",   "Primer Quiz",           "🎮");
+      if (quizzesTotalNuevo === 10)  evalLogro("10_QUIZZES",    "10 Quizzes",            "⭐");
+      if (quizzesTotalNuevo === 25)  evalLogro("25_QUIZZES",    "Estudiante Sindical",   "🎓");
+      if (quizzesTotalNuevo === 50)  evalLogro("50_QUIZZES",    "Comprometido",          "📖");
+      if (quizzesTotalNuevo === 100) evalLogro("100_QUIZZES",   "Maestro del Sindicato", "🏛️");
+      if (correctas === 5)           evalLogro("QUIZ_PERFECTO", "Quiz Perfecto",         "🎯");
+      if (quizesPerfNuevo === 3)     evalLogro("3_PERFECTOS",   "Imparable",             "💯");
+      if (quizesPerfNuevo === 10)    evalLogro("10_PERFECTOS",  "Sin Errores",           "🌟");
+      if (nuevaRacha === 3)   evalLogro("RACHA_3",   "Primeros pasos",    "✨");
+      if (nuevaRacha === 7)   evalLogro("RACHA_7",   "Racha de 7 días",   "🔥");
+      if (nuevaRacha === 14)  evalLogro("RACHA_14",  "Racha de 2 semanas","🔥🔥");
+      if (nuevaRacha === 30)  evalLogro("RACHA_30",  "Racha de 30 días",  "📅");
+      if (nuevaRacha === 60)  evalLogro("RACHA_60",  "Racha de 60 días",  "🗓️");
+      if (nuevaRacha === 100) evalLogro("RACHA_100", "Centenario",        "💎");
+
+      Logger.log("✅ Quiz OK: " + rutLimpio + " | " + correctas + "/5 | +" + xpFinal + " XP (bono: +" + xpBonoRacha + ") | Racha: " + nuevaRacha);
+
+      if (data[i][COL.GRADO] !== gradoNuevo.nombre) {
+        const correoSocio = obtenerUsuarioPorRut(rutInput).correo || '';
+        enviarCorreoNivel(correoSocio, data[i][COL.NOMBRE], gradoNuevo.nombre, xpNuevo);
+      }
+
+      return {
+        success: true,
+        correctas: correctas,
+        xpGanado: xpFinal,
+        xpBase: xpGanado,
+        xpBonoRacha: xpBonoRacha,
+        nuevaRacha: nuevaRacha,
+        xpTotal: xpNuevo,
+        grado: gradoNuevo,
+        subioGrado: data[i][COL.GRADO] !== gradoNuevo.nombre,
+        gradoAnterior: data[i][COL.GRADO],
+        logrosNuevos: logrosNuevos
+      };
+    }
+
+    return { success: false, message: "Socio no encontrado en gamificación." };
+
+  } catch (e) {
+    Logger.log("❌ Error en registrarResultadoQuiz: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+function enviarCorreoNivel(correo, nombre, gradoNuevo, xpTotal) {
+  if (!correo || !correo.includes('@')) return;
+
+  const CONFIG_GRADO = {
+    'Aspirante':  { headerBg:'#15803d', color:'#22c55e', badgeBg:'#dcfce7', badgeText:'#14532d', icono:'🌱', nivel:'1/6', quote:'Cada gran viaje comienza con el primer paso. ¡Has dado el tuyo!', nextNivel:'⚙️ Aprendiz', nextXp:'1.501 XP' },
+    'Aprendiz':   { headerBg:'#1d4ed8', color:'#3b82f6', badgeBg:'#dbeafe', badgeText:'#1e3a8a', icono:'⚙️', nivel:'2/6', quote:'El conocimiento es la herramienta más poderosa del movimiento sindical.', nextNivel:'🔩 Trabajador', nextXp:'4.501 XP' },
+    'Trabajador': { headerBg:'#c2410c', color:'#f97316', badgeBg:'#ffedd5', badgeText:'#7c2d12', icono:'🔩', nivel:'3/6', quote:'El trabajo organizado mueve montañas. Tú eres la fuerza del sindicato.', nextNivel:'🛡️ Defensor', nextXp:'10.001 XP' },
+    'Defensor':   { headerBg:'#6d28d9', color:'#8b5cf6', badgeBg:'#ede9fe', badgeText:'#4c1d95', icono:'🛡️', nivel:'4/6', quote:'Defender los derechos colectivos es el corazón del sindicalismo.', nextNivel:'⚖️ Negociador', nextXp:'18.001 XP' },
+    'Negociador': { headerBg:'#b45309', color:'#d97706', badgeBg:'#fef3c7', badgeText:'#78350f', icono:'⚖️', nivel:'5/6', quote:'La negociación efectiva nace del conocimiento profundo y la preparación incansable.', nextNivel:'🏆 Dirigente', nextXp:'30.001 XP' },
+    'Dirigente':  { headerBg:'#92400e', color:'#f59e0b', badgeBg:'#fffbeb', badgeText:'#78350f', icono:'🏆', nivel:'6/6', quote:'El verdadero líder no es quien dirige, sino quien inspira y transforma.', nextNivel: null, nextXp: null }
+  };
+
+  const cfg = CONFIG_GRADO[gradoNuevo];
+  if (!cfg) return;
+
+  const xpFmt = Number(xpTotal).toLocaleString('es-CL');
+  const nextSection = cfg.nextNivel
+    ? '<div style="background:' + cfg.badgeBg + ';border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid ' + cfg.color + '33;"><p style="font-size:10px;font-weight:700;color:' + cfg.badgeText + ';text-transform:uppercase;letter-spacing:0.5px;margin:0 0 5px;">Próximo nivel</p><p style="font-size:13px;color:' + cfg.badgeText + ';margin:0;font-weight:600;">' + cfg.nextNivel + ' — desde ' + cfg.nextXp + '</p></div>'
+    : '<div style="background:#fef3c7;border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid #fbbf2433;"><p style="font-size:10px;font-weight:700;color:#78350f;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 5px;">Nivel máximo</p><p style="font-size:13px;color:#78350f;margin:0;font-weight:600;">🏅 Has completado todos los niveles de SLIM Quest</p></div>';
+
+  const html = '<!DOCTYPE html><html><body style="margin:0;padding:20px;background:#f1f5f9;font-family:Arial,sans-serif;">'
+    + '<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">'
+    + '<div style="background:' + cfg.headerBg + ';padding:32px 24px;text-align:center;">'
+    + '<div style="font-size:56px;line-height:1;margin-bottom:10px;">' + cfg.icono + '</div>'
+    + '<h1 style="margin:0 0 4px;font-size:22px;font-weight:600;color:#fff;">¡Subiste a ' + gradoNuevo + '!</h1>'
+    + '<p style="margin:0;font-size:13px;color:rgba(255,255,255,.75);">Sindicato SLIM N°3 · SLIM Quest</p></div>'
+    + '<div style="padding:24px;">'
+    + '<p style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:12px;">Hola, ' + nombre + '</p>'
+    + '<p style="font-size:13px;color:#64748b;line-height:1.7;margin-bottom:20px;">Tu constancia y dedicación en SLIM Quest te han llevado a un nuevo nivel.</p>'
+    + '<div style="display:flex;gap:8px;margin-bottom:20px;">'
+    + '<div style="flex:1;text-align:center;background:#f8fafc;border-radius:10px;padding:12px 6px;"><div style="font-size:18px;font-weight:700;color:' + cfg.color + ';">' + xpFmt + '</div><div style="font-size:10px;color:#94a3b8;margin-top:2px;">XP acumulados</div></div>'
+    + '<div style="flex:1;text-align:center;background:#f8fafc;border-radius:10px;padding:12px 6px;"><div style="font-size:15px;font-weight:700;color:' + cfg.color + ';">Nivel ' + cfg.nivel + '</div><div style="font-size:10px;color:#94a3b8;margin-top:2px;">Tu posición</div></div>'
+    + '</div>'
+    + '<div style="border-left:3px solid ' + cfg.color + ';background:' + cfg.badgeBg + ';border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:16px;">'
+    + '<p style="font-size:13px;font-style:italic;color:' + cfg.badgeText + ';line-height:1.6;margin:0;">"' + cfg.quote + '"</p></div>'
+    + nextSection + '</div>'
+    + '<div style="padding:16px 24px;border-top:1px solid #f1f5f9;text-align:center;">'
+    + '<p style="font-size:11px;color:#94a3b8;margin:2px 0;">Mensaje automático de SLIMAPP</p>'
+    + '<p style="font-size:11px;color:#cbd5e1;margin:2px 0;">Sindicato SLIM N°3 · No responder a este correo</p>'
+    + '</div></div></body></html>';
+
+  try {
+    MailApp.sendEmail({
+      to: correo,
+      subject: cfg.icono + ' ¡Subiste a ' + gradoNuevo + ' en SLIM Quest! — Sindicato SLIM N°3',
+      htmlBody: html,
+      name: 'Sindicato SLIM N°3'
+    });
+    Logger.log('📧 Correo de nivel enviado a ' + correo + ' — Grado: ' + gradoNuevo);
+  } catch(e) {
+    Logger.log('⚠️ Error enviando correo de nivel: ' + e.toString());
+  }
+}
+
+function actualizarXpBancoPreguntas() {
+  try {
+    const sheet   = getSheet('GAMIFICACION', 'BANCO_PREGUNTAS');
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) { Logger.log("⚠️ Banco vacío."); return; }
+
+    const COL     = CONFIG.COLUMNAS.BANCO_PREGUNTAS;
+    const data    = sheet.getRange(2, 1, lastRow - 1, 13).getDisplayValues();
+    const XP_MAP  = { BASICO: 15, INTERMEDIO: 25, AVANZADO: 40, DIRIGENTE: 50 };
+    let actualizadas = 0;
+    let omitidas     = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      const nivel    = String(data[i][COL.NIVEL]).toUpperCase().trim();
+      const xpNuevo  = XP_MAP[nivel];
+      if (!xpNuevo) { omitidas++; continue; }
+      const xpActual = parseInt(data[i][COL.XP]) || 0;
+      if (xpActual === xpNuevo) { omitidas++; continue; }
+      sheet.getRange(i + 2, COL.XP + 1).setValue(xpNuevo);
+      actualizadas++;
+    }
+
+    Logger.log("✅ actualizarXpBancoPreguntas — Actualizadas: " + actualizadas + " | Sin cambio: " + omitidas);
+  } catch (e) {
+    Logger.log("❌ Error: " + e.toString());
+  }
+}
+
+function obtenerPreguntasSecreto(rutInput, cantidad) {
+  try {
+    cantidad = cantidad || 5;
+
+    const progreso = getProgresoSocio(rutInput);
+    if (!progreso.success || progreso.grado.nombre !== "Dirigente") {
+      return {
+        success: false,
+        accesoDenegado: true,
+        message: "El Nivel Secreto es exclusivo para socios con grado Dirigente. Sigue acumulando XP en el quiz diario para alcanzarlo."
+      };
+    }
+
+    const sheet = getSheet('GAMIFICACION', 'BANCO_PREGUNTAS');
+    if (!sheet) return { success: false, message: "Banco de preguntas no disponible." };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, message: "No hay preguntas en el nivel secreto." };
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 13).getDisplayValues();
+    const COL  = CONFIG.COLUMNAS.BANCO_PREGUNTAS;
+    const pool = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const activa = String(data[i][COL.ACTIVA]).toUpperCase();
+      if (activa !== "TRUE" && activa !== "VERDADERO" && activa !== "1") continue;
+      const nivel = String(data[i][COL.NIVEL]).toUpperCase().trim();
+      if (nivel !== "DIRIGENTE") continue;
+
+      pool.push({
+        id:          data[i][COL.ID],
+        categoria:   data[i][COL.CATEGORIA],
+        nivel:       nivel,
+        pregunta:    data[i][COL.PREGUNTA],
+        opciones: {
+          A: data[i][COL.OPCION_A], B: data[i][COL.OPCION_B],
+          C: data[i][COL.OPCION_C], D: data[i][COL.OPCION_D]
+        },
+        respuesta:   data[i][COL.RESPUESTA].toUpperCase().trim(),
+        explicacion: data[i][COL.EXPLICACION],
+        xp:          parseInt(data[i][COL.XP]) || 50,
+        fuente:      data[i][COL.FUENTE]
+      });
+    }
+
+    if (pool.length === 0) {
+      return { success: false, message: "No hay preguntas del nivel secreto cargadas aún." };
+    }
+
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    Logger.log("🔐 Quiz secreto generado para " + rutInput + " | Preguntas: " + Math.min(cantidad, pool.length));
+    return { success: true, preguntas: pool.slice(0, cantidad), modoSecreto: true };
+
+  } catch (e) {
+    Logger.log("❌ Error en obtenerPreguntasSecreto: " + e.toString());
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+/**
+ * ============================================================
+ * COMPLETAR CAMPOS BANCARIOS EN BLANCO — Banco Estado Cuenta RUT
+ * ------------------------------------------------------------
+ * Lógica:
+ *   - BANCO en blanco  → completa los 3 campos con Cuenta RUT
+ *   - BANCO con datos  → solo verifica consistencia y reporta
+ *   - Otro banco       → no toca nada
+ *
+ * INSTRUCCIONES:
+ *   1. Pegar al final de Code.gs
+ *   2. Seleccionar "completarCamposBancariosEnBlanco" y presionar ▶
+ *   3. Revisar: Ver > Registros de ejecución
+ *   4. Eliminar esta función una vez confirmada la ejecución
+ * ============================================================
+ */
+function completarCamposBancariosEnBlanco() {
+  try {
+    var sheet = getSheet('USUARIOS', 'USUARIOS');
+    if (!sheet) {
+      Logger.log('❌ No se pudo acceder a la hoja de usuarios.');
+      return;
+    }
+
+    var COL     = CONFIG.COLUMNAS.USUARIOS;
+    var lastRow = sheet.getLastRow();
+
+    if (lastRow < 2) {
+      Logger.log('⚠️ No hay registros en la hoja.');
+      return;
+    }
+
+    var data = sheet.getRange(2, 1, lastRow - 1, COL.NUMERO_CUENTA + 1).getValues();
+
+    var contCompletados  = 0; // Filas en blanco que se completaron
+    var contOK           = 0; // Filas con datos correctos (solo verificación)
+    var contAvisos       = 0; // Filas con datos pero con inconsistencias
+    var contOtrosBancos  = 0; // Filas con otro banco, sin tocar
+    var contSinRut       = 0; // Filas con RUT inválido, omitidas
+
+    for (var i = 0; i < data.length; i++) {
+      var fila       = i + 2;
+      var rutRaw     = String(data[i][COL.RUT]          || '').trim();
+      var banco      = String(data[i][COL.BANCO]         || '').trim();
+      var tipoCuenta = String(data[i][COL.TIPO_CUENTA]   || '').trim();
+      var numCuenta  = String(data[i][COL.NUMERO_CUENTA] || '').trim();
+      var nombre     = String(data[i][COL.NOMBRE]        || '').trim();
+      var bancoUp    = banco.toUpperCase();
+
+      // Validar RUT
+      var rutLimpio = cleanRut(rutRaw);
+      if (!rutLimpio || rutLimpio.length < 7) {
+        contSinRut++;
+        continue;
+      }
+
+      var rutBody = rutLimpio.slice(0, -1); // RUT sin dígito verificador
+
+      // ─────────────────────────────────────────────────────────
+      // CASO 1: BANCO EN BLANCO → completar los 3 campos
+      // ─────────────────────────────────────────────────────────
+      if (!banco) {
+        sheet.getRange(fila, COL.BANCO + 1).setValue('BANCO ESTADO (Cuenta RUT)');
+        sheet.getRange(fila, COL.TIPO_CUENTA + 1).setValue('CUENTA VISTA');
+        sheet.getRange(fila, COL.NUMERO_CUENTA + 1).setValue(rutBody);
+
+        try { CacheService.getScriptCache().remove('user_' + rutLimpio); } catch(e) {}
+
+        Logger.log('✅ Fila ' + fila + ' | ' + nombre + ' | Completado → Cuenta RUT: ' + rutBody);
+        contCompletados++;
+
+        // Pausa cada 30 escrituras
+        if (contCompletados % 30 === 0) Utilities.sleep(500);
+
+      // ─────────────────────────────────────────────────────────
+      // CASO 2: BANCO ESTADO (Cuenta RUT) → verificar y corregir
+      // Solo actúa si el tipo es CUENTA VISTA o está vacío.
+      // Si es CUENTA CORRIENTE u otro tipo, no se toca.
+      // ─────────────────────────────────────────────────────────
+      } else if (bancoUp === 'BANCO ESTADO (CUENTA RUT)') {
+        var tipoCuentaUp = tipoCuenta.toUpperCase();
+
+        // Si tiene CUENTA CORRIENTE u otro tipo distinto a CUENTA VISTA → omitir
+        if (tipoCuentaUp !== '' && tipoCuentaUp !== 'CUENTA VISTA') {
+          contOtrosBancos++;
+          continue;
+        }
+
+        var tipoOK   = (tipoCuentaUp === 'CUENTA VISTA');
+        var numeroOK = (numCuenta === rutBody);
+
+        if (tipoOK && numeroOK) {
+          contOK++;
+        } else {
+          var problemas = [];
+          if (!tipoOK) {
+            sheet.getRange(fila, COL.TIPO_CUENTA + 1).setValue('CUENTA VISTA');
+            problemas.push('TIPO_CUENTA corregido: "' + tipoCuenta + '" \u2192 "CUENTA VISTA"');
+          }
+          if (!numeroOK) {
+            sheet.getRange(fila, COL.NUMERO_CUENTA + 1).setValue(rutBody);
+            problemas.push('NUMERO_CUENTA corregido: "' + numCuenta + '" \u2192 "' + rutBody + '"');
+          }
+          try { CacheService.getScriptCache().remove('user_' + rutLimpio); } catch(e) {}
+          Logger.log('\uD83D\uDD27 Fila ' + fila + ' | ' + nombre + ' | ' + problemas.join(' | '));
+          contAvisos++;
+
+          if (contAvisos % 30 === 0) Utilities.sleep(500);
+        }
+
+      // ─────────────────────────────────────────────────────────
+      // CASO 3: Cualquier otro banco → no tocar, no reportar
+      // ─────────────────────────────────────────────────────────
+      } else {
+        contOtrosBancos++;
+      }
+    }
+
+    Logger.log('');
+    Logger.log('============= RESUMEN =============');
+    Logger.log('✅ Completados (estaban en blanco): ' + contCompletados);
+    Logger.log('🔍 Verificados y correctos        : ' + contOK);
+    Logger.log('⚠️  Con inconsistencias (revisar)  : ' + contAvisos);
+    Logger.log('⏭️  Otro banco (sin cambios)        : ' + contOtrosBancos);
+    Logger.log('🚫 RUT inválido (omitidos)         : ' + contSinRut);
+    Logger.log('===================================');
+
+    if (contAvisos > 0) {
+      Logger.log('');
+      Logger.log('ℹ️  Las filas con inconsistencias NO fueron modificadas.');
+      Logger.log('   Corrígelas manualmente o vuelve a ejecutar la función de migración completa.');
+    }
+
+  } catch (e) {
+    Logger.log('❌ Error en completarCamposBancariosEnBlanco: ' + e.toString());
+  }
+}
+
+/**
+ * Normaliza un string de hora al formato HH:mm requerido por <input type="time">.
+ * Acepta: "8:00", "08:00", "8:30 AM", "10:30 a.m.", "08:00:00".
+ * Retorna "" si el valor no es reconocible.
+ */
+function normalizarHoraHHmm(valor) {
+  if (!valor) return '';
+  var limpio = valor.replace(/\s/g, '').toUpperCase();
+  var esPM = limpio.indexOf('PM') !== -1;
+  var esAM = limpio.indexOf('AM') !== -1;
+  limpio = limpio.replace('A.M.', '').replace('P.M.', '').replace('AM', '').replace('PM', '');
+  var partes = limpio.split(':');
+  if (partes.length < 2) return '';
+  var horas   = parseInt(partes[0], 10);
+  var minutos = parseInt(partes[1], 10);
+  if (isNaN(horas) || isNaN(minutos)) return '';
+  if (esAM && horas === 12) horas = 0;
+  if (esPM && horas !== 12) horas += 12;
+  return ('0' + horas).slice(-2) + ':' + ('0' + minutos).slice(-2);
+}
+
+// ==========================================
+// MÓDULO: GESTIÓN PUNTOS DE CONTROL QR (ADMIN)
+// ==========================================
+
+/**
+ * Retorna todos los puntos de control con su ventana horaria.
+ * Columnas PUNTOS_CONTROL: A=NOMBRE, B=URL, C=QR_CODE, D=URL_BASE, E=HORA_APERTURA, F=HORA_CIERRE
+ */
+function obtenerPuntosControl() {
+  try {
+    var ss = getSpreadsheet('ASISTENCIA');
+    var sheet = ss.getSheetByName(CONFIG.HOJAS.PUNTOS_CONTROL);
+    if (!sheet || sheet.getLastRow() < 2) {
+      return { success: true, puntos: [] };
+    }
+    var datos = sheet.getDataRange().getDisplayValues();
+    var puntos = [];
+    for (var i = 1; i < datos.length; i++) {
+      var nombre = String(datos[i][0] || '').trim();
+      if (!nombre) continue;
+      puntos.push({
+        nombre:        nombre,
+        horaApertura:  normalizarHoraHHmm(String(datos[i][4] || '').trim()),
+        horaCierre:    normalizarHoraHHmm(String(datos[i][5] || '').trim()),
+        tipo:          String(datos[i][6] || 'PRESENCIAL').trim().toUpperCase() || 'PRESENCIAL'
+      });
+    }
+    return { success: true, puntos: puntos };
+  } catch (e) {
+    Logger.log('Error en obtenerPuntosControl: ' + e.toString());
+    return { success: false, message: e.toString() };
+  }
+}
+
+/**
+ * Crea un nuevo punto de control en la hoja PUNTOS_CONTROL.
+ * Genera automáticamente la fórmula de URL (col B) y el QR (col C).
+ */
+function crearPuntoControl(nombre, tipo) {
+  try {
+    nombre = String(nombre || '').trim();
+    tipo   = (String(tipo || '').trim().toUpperCase() === 'VIRTUAL') ? 'VIRTUAL' : 'PRESENCIAL';
+    if (!nombre) return { success: false, message: 'El nombre no puede estar vacío.' };
+
+    var ss = getSpreadsheet('ASISTENCIA');
+    var sheet = ss.getSheetByName(CONFIG.HOJAS.PUNTOS_CONTROL);
+    if (!sheet) return { success: false, message: 'Hoja PUNTOS_CONTROL no encontrada.' };
+
+    if (sheet.getLastRow() > 1) {
+      var existentes = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getDisplayValues();
+      for (var i = 0; i < existentes.length; i++) {
+        if (String(existentes[i][0]).trim() === nombre) {
+          return { success: false, message: 'Ya existe un punto de control con ese nombre.' };
+        }
+      }
+    }
+
+    var nuevaFila = sheet.getLastRow() + 1;
+    sheet.getRange(nuevaFila, 1).setValue(nombre);
+    sheet.getRange(nuevaFila, 2).setFormula('=$D$1&"?action=checkin&control="&A' + nuevaFila);
+    sheet.getRange(nuevaFila, 3).setFormula('=IMAGE("https://quickchart.io/qr?size=300&text="&ENCODEURL(B' + nuevaFila + '))');
+    sheet.getRange(nuevaFila, 7).setValue(tipo);
+
+    return { success: true, message: 'Punto de control creado correctamente.' };
+  } catch (e) {
+    Logger.log('Error en crearPuntoControl: ' + e.toString());
+    return { success: false, message: e.toString() };
+  }
+}
+
+/**
+ * Guarda o actualiza la ventana horaria (HORA_APERTURA col E, HORA_CIERRE col F)
+ * de un punto de control específico. Permite valores vacíos para quitar restricción.
+ */
+function guardarVentanaPuntoControl(nombre, horaApertura, horaCierre) {
+  try {
+    nombre       = String(nombre       || '').trim();
+    horaApertura = String(horaApertura || '').trim();
+    horaCierre   = String(horaCierre   || '').trim();
+
+    var reHora = /^([01]\d|2[0-3]):[0-5]\d$/;
+    if (horaApertura && !reHora.test(horaApertura)) {
+      return { success: false, message: 'Hora de apertura inválida. Use formato HH:mm (ej: 08:30).' };
+    }
+    if (horaCierre && !reHora.test(horaCierre)) {
+      return { success: false, message: 'Hora de cierre inválida. Use formato HH:mm (ej: 10:30).' };
+    }
+
+    var ss = getSpreadsheet('ASISTENCIA');
+    var sheet = ss.getSheetByName(CONFIG.HOJAS.PUNTOS_CONTROL);
+    if (!sheet || sheet.getLastRow() < 2) {
+      return { success: false, message: 'Punto de control no encontrado.' };
+    }
+
+    var datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getDisplayValues();
+    for (var i = 0; i < datos.length; i++) {
+      if (String(datos[i][0]).trim() === nombre) {
+        sheet.getRange(i + 2, 5).setValue(horaApertura);
+        sheet.getRange(i + 2, 6).setValue(horaCierre);
+        return { success: true, message: 'Ventana horaria guardada correctamente.' };
+      }
+    }
+    return { success: false, message: 'Punto de control no encontrado.' };
+  } catch (e) {
+    Logger.log('Error en guardarVentanaPuntoControl: ' + e.toString());
+    return { success: false, message: e.toString() };
+  }
+}
+
+/**
+ * Elimina un punto de control completo de la hoja PUNTOS_CONTROL.
+ */
+function eliminarPuntoControl(nombre) {
+  try {
+    nombre = String(nombre || '').trim();
+    var ss = getSpreadsheet('ASISTENCIA');
+    var sheet = ss.getSheetByName(CONFIG.HOJAS.PUNTOS_CONTROL);
+    if (!sheet || sheet.getLastRow() < 2) {
+      return { success: false, message: 'Punto de control no encontrado.' };
+    }
+    var datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getDisplayValues();
+    for (var i = 0; i < datos.length; i++) {
+      if (String(datos[i][0]).trim() === nombre) {
+        sheet.deleteRow(i + 2);
+        return { success: true, message: 'Punto de control eliminado.' };
+      }
+    }
+    return { success: false, message: 'Punto de control no encontrado.' };
+  } catch (e) {
+    Logger.log('Error en eliminarPuntoControl: ' + e.toString());
+    return { success: false, message: e.toString() };
+  }
+}
+
+/**
+ * Cierra el registro de asistencia de inmediato fijando HORA_CIERRE
+ * con la hora actual de Santiago en la columna F.
+ */
+function cerrarRegistroAhora(nombre) {
+  try {
+    nombre = String(nombre || '').trim();
+    var horaActual = Utilities.formatDate(new Date(), 'America/Santiago', 'HH:mm');
+    var ss = getSpreadsheet('ASISTENCIA');
+    var sheet = ss.getSheetByName(CONFIG.HOJAS.PUNTOS_CONTROL);
+    if (!sheet || sheet.getLastRow() < 2) {
+      return { success: false, message: 'Punto de control no encontrado.' };
+    }
+    var datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getDisplayValues();
+    for (var i = 0; i < datos.length; i++) {
+      if (String(datos[i][0]).trim() === nombre) {
+        sheet.getRange(i + 2, 6).setValue(horaActual);
+        return { success: true, message: 'Registro cerrado. Hora de cierre fijada en ' + horaActual + ' hrs.', horaCierre: horaActual };
+      }
+    }
+    return { success: false, message: 'Punto de control no encontrado.' };
+  } catch (e) {
+    Logger.log('Error en cerrarRegistroAhora: ' + e.toString());
+    return { success: false, message: e.toString() };
+  }
+}
+
+/**
+ * Retorna TODAS las asambleas virtuales activas en este momento.
+ * Activa = tipo VIRTUAL + dentro de la ventana horaria (o sin ventana).
+ */
+function obtenerAsambleaVirtualActiva() {
+  try {
+    var ss = getSpreadsheet('ASISTENCIA');
+    var sheet = ss.getSheetByName(CONFIG.HOJAS.PUNTOS_CONTROL);
+    if (!sheet || sheet.getLastRow() < 2) {
+      return { success: true, activa: false, asambleas: [] };
+    }
+    var horaActual = Utilities.formatDate(new Date(), 'America/Santiago', 'HH:mm');
+    var datos = sheet.getDataRange().getDisplayValues();
+    var asambleas = [];
+    for (var i = 1; i < datos.length; i++) {
+      var nombre = String(datos[i][0] || '').trim();
+      if (!nombre) continue;
+      var tipo = String(datos[i][6] || '').trim().toUpperCase();
+      if (tipo !== 'VIRTUAL') continue;
+      var apertura = normalizarHoraHHmm(String(datos[i][4] || '').trim());
+      var cierre   = normalizarHoraHHmm(String(datos[i][5] || '').trim());
+      var activa = (!apertura || !cierre) ? true : (horaActual >= apertura && horaActual <= cierre);
+      if (activa) {
+        asambleas.push({ nombre: nombre, apertura: apertura, cierre: cierre });
+      }
+    }
+    return { success: true, activa: asambleas.length > 0, asambleas: asambleas };
+  } catch (e) {
+    Logger.log('Error en obtenerAsambleaVirtualActiva: ' + e.toString());
+    return { success: false, activa: false, asambleas: [] };
+  }
+}
+
+/**
+ * Registra asistencia virtual SIN lock.
+ * Para asambleas virtuales con alta concurrencia (hasta 1.400 usuarios).
+ * El localStorage del frontend actúa como primera barrera contra duplicados.
+ * appendRow es atómico en Sheets — seguro sin lock para este caso de uso.
+ */
+function registrarAsistenciaVirtual(rutInput, nombreControl) {
+  try {
+    var rutLimpio = cleanRut(rutInput);
+    if (!rutLimpio) return { success: false, message: 'RUT inválido.' };
+
+    // Validar usuario con caché (sin tocar el lock)
+    var usuario = obtenerUsuarioPorRut(rutInput);
+    if (!usuario.encontrado) {
+      return { success: false, message: 'RUT no encontrado en el sistema.' };
+    }
+
+    // Validar ventana horaria (reutiliza la misma lógica de registrarAsistencia)
+    try {
+      var ssAsistVentana = getSpreadsheet('ASISTENCIA');
+      var sheetPCtrl = ssAsistVentana.getSheetByName(CONFIG.HOJAS.PUNTOS_CONTROL);
+      if (sheetPCtrl && sheetPCtrl.getLastRow() > 1) {
+        var datosPC = sheetPCtrl.getDataRange().getDisplayValues();
+        for (var pc = 1; pc < datosPC.length; pc++) {
+          if (String(datosPC[pc][0]).trim() === nombreControl) {
+            var horaApertura = normalizarHoraHHmm(String(datosPC[pc][4] || '').trim());
+            var horaCierre   = normalizarHoraHHmm(String(datosPC[pc][5] || '').trim());
+            if (horaApertura && horaCierre) {
+              var horaActual = Utilities.formatDate(new Date(), 'America/Santiago', 'HH:mm');
+              if (horaActual < horaApertura) {
+                return { success: false, ventanaCerrada: true, tipoVentana: 'aun_no_abre',
+                  horaApertura: horaApertura, horaCierre: horaCierre,
+                  message: 'El registro aun no ha comenzado. Abre a las ' + horaApertura + ' hrs.' };
+              }
+              if (horaActual > horaCierre) {
+                return { success: false, ventanaCerrada: true, tipoVentana: 'ya_cerro',
+                  horaApertura: horaApertura, horaCierre: horaCierre,
+                  message: 'El registro ha cerrado. El periodo fue de ' + horaApertura + ' a ' + horaCierre + ' hrs.' };
+              }
+            }
+            break;
+          }
+        }
+      }
+    } catch (eVentana) {
+      Logger.log('Advertencia ventana horaria virtual: ' + eVentana.toString());
+    }
+
+    // Verificación de duplicado en Sheets (respaldo para multi-dispositivo)
+    var ssAsistencia = getSpreadsheet('ASISTENCIA');
+    var sheetAsistencia = ssAsistencia.getSheetByName(CONFIG.HOJAS.ASISTENCIA);
+    if (!sheetAsistencia) {
+      sheetAsistencia = ssAsistencia.insertSheet(CONFIG.HOJAS.ASISTENCIA);
+      sheetAsistencia.appendRow(['FECHA_HORA', 'RUT', 'NOMBRE', 'ASAMBLEA', 'TIPO_ASISTENCIA', 'GESTION', 'CODIGO_TEMP', 'NOTIF_CORREO']);
+    }
+
+    // Extraer la fecha del nombre del control (formato TIPO_DD-MM-YYYY_REGION)
+    // Para verificar si el RUT ya registró en cualquier asamblea VIRTUAL del mismo día
+    var fechaHoy = Utilities.formatDate(new Date(), 'America/Santiago', 'dd/MM/yyyy');
+    var partesControl = nombreControl.split('_');
+    var fechaEvento = '';
+    for (var p = 0; p < partesControl.length; p++) {
+      if (/^\d{2}-\d{2}-\d{4}$/.test(partesControl[p])) {
+        var fp = partesControl[p].split('-');
+        fechaEvento = fp[0] + '/' + fp[1] + '/' + fp[2]; // DD/MM/YYYY
+        break;
+      }
+    }
+
+    var dataAsistencia = sheetAsistencia.getDataRange().getDisplayValues();
+    for (var i = 1; i < dataAsistencia.length; i++) {
+      var row = dataAsistencia[i];
+      if (cleanRut(row[1]) !== rutLimpio) continue;
+
+      // Bloqueo exacto: mismo RUT, misma asamblea
+      if (row[3] === nombreControl) {
+        return { success: false, yaRegistrado: true,
+          message: 'Ya registraste tu asistencia en esta asamblea.' };
+      }
+
+      // Bloqueo por fecha del evento: mismo RUT, misma fecha, tipo VIRTUAL
+      // Evita doble registro desde otro dispositivo cuando hay múltiples asambleas el mismo día
+      if (fechaEvento && row[4] === 'VIRTUAL') {
+        var fechaRegistro = String(row[0]).split(' ')[0]; // DD/MM/YYYY desde FECHA_HORA
+        if (fechaRegistro === fechaEvento) {
+          return { success: false, yaRegistrado: true,
+            message: 'Ya registraste tu asistencia en el evento de hoy desde otro dispositivo.' };
+        }
+      }
+    }
+
+    // Registro sin lock — appendRow es atómico
+    var fechaStr = Utilities.formatDate(new Date(), 'America/Santiago', 'dd/MM/yyyy HH:mm:ss');
+    sheetAsistencia.appendRow([
+      fechaStr,
+      usuario.rut,
+      usuario.nombre,
+      nombreControl,
+      'VIRTUAL',
+      'Sistema',
+      '',
+      ''
+    ]);
+
+    return {
+      success: true,
+      nombre: usuario.nombre,
+      rut: usuario.rut,
+      fecha: fechaStr,
+      mensajeCorreo: usuario.correo && usuario.correo.includes('@')
+        ? 'Recibirás una confirmación en tu correo a más tardar esta noche.'
+        : 'No tienes correo registrado. Puedes ver tu historial en el módulo Registro Asistencia.'
+    };
+
+  } catch (e) {
+    Logger.log('Error en registrarAsistenciaVirtual: ' + e.toString());
+    return { success: false, message: 'Error del servidor: ' + e.toString() };
+  }
 }
