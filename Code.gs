@@ -22,6 +22,17 @@ function doGet(e) {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
   }
+
+  // CASO: Portal respuesta empleador
+  if (e.parameter.token) {
+    var template = HtmlService.createTemplateFromFile('Denuncia_Response');
+    template.tokenValue = e.parameter.token || "";
+    template.folioValue = e.parameter.folio || "";
+    return template.evaluate()
+        .setTitle('Portal Respuesta Denuncia — Sindicato SLIM n°3')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+}
   
   // CASO 3: Aplicación principal
   return HtmlService.createHtmlOutputFromFile('Index')
@@ -1778,6 +1789,8 @@ function obtenerEstadosSwitchDashboard() {
     var asistencia      = (props.getProperty('asistencia_habilitada')       !== 'false');
     var apelaciones     = (props.getProperty('apelaciones_habilitado')      !== 'false');
 
+    var denuncias = (props.getProperty('denuncias_habilitado') !== 'false');
+
     return {
       success: true,
       prestamos:       prestamos,
@@ -1787,7 +1800,8 @@ function obtenerEstadosSwitchDashboard() {
       calculadora:     calculadora,
       permisosMedicos: permisosMedicos,
       asistencia:      asistencia,
-      apelaciones:     apelaciones
+      apelaciones:     apelaciones,
+      denuncias:       denuncias
     };
   } catch (e) {
     Logger.log('Error en obtenerEstadosSwitchDashboard: ' + e.toString());
@@ -7417,3 +7431,956 @@ function registrarAsistenciaVirtual(rutInput, nombreControl) {
     return { success: false, message: 'Error del servidor: ' + e.toString() };
   }
 }
+
+// ==========================================
+// MÓDULO: DENUNCIAS INTERNAS
+// Agregar al FINAL de Code.gs
+// ==========================================
+
+// ── Constantes del módulo ──────────────────
+var BD_DENUNCIAS_ID      = "1ypCaD8bU5WCkZ-bmDAh7MXh9muIZLPdwYdeqYRnGeVc";
+var CARPETA_DENUNCIAS_ID = "1BzvANcSx2aw76mzMsxkqt4HIe-p4sOct";
+var CORREO_DIRECTORIO_DENUNCIAS  = "penailillo.fetrasiss@gmail.com";
+var CORREO_EMPLEADOR_DENUNCIAS   = "slim3comunicaciones@gmail.com";
+
+var COL_DEN = {
+  ID_DENUNCIA:            0,
+  FECHA_REGISTRO:         1,
+  RUT_DENUNCIANTE:        2,
+  NOMBRE_DENUNCIANTE:     3,
+  RUT_GESTOR:             4,
+  NOMBRE_GESTOR:          5,
+  TIPO_GESTION:           6,
+  CATEGORIA:              7,
+  SUBCATEGORIA:           8,
+  DIRIGIDO_A_TIPO:        9,
+  NOMBRE_DENUNCIADO:     10,
+  LUGAR_TRABAJO:         11,
+  DESCRIPCION_HECHOS:    12,
+  URL_ARCHIVO_ADJUNTO:   13,
+  ESTADO:                14,
+  CORREO_SOCIO:          15,
+  NOTIFICADO_EMPLEADOR:  16,
+  NOTIFICADO_DIRECTORIO: 17,
+  NOTIFICADO_SOCIO:      18,
+  PDF_URL:               19,
+  CARPETA_DRIVE_ID:      20,
+  TOKEN_RESPUESTA:       21,
+  FECHA_RESPUESTA_EMPLEADOR: 22,
+  RESULTADO_INVESTIGACION:   23,
+  URL_INFORME_EMPLEADOR:     24,
+  NOTIFICADO_CIERRE:         25,
+  OBSERVACIONES:             26
+};
+
+// ─────────────────────────────────────────────────────────────
+// 1. obtenerDatosDenunciante
+// ─────────────────────────────────────────────────────────────
+/**
+ * Retorna datos de contacto del socio para el módulo de denuncias.
+ * Valida correo (formato + dominio ficticio) y teléfono.
+ */
+function obtenerDatosDenunciante(rut) {
+  try {
+    var usuario = obtenerUsuarioPorRut(rut);
+    if (!usuario.encontrado) {
+      return { success: false, message: "Usuario no encontrado en el sistema." };
+    }
+
+    var correoRaw   = String(usuario.correo   || "").trim();
+    var contactoRaw = String(usuario.contacto || "").trim();
+
+    // Validar correo
+    var correoValido = false;
+    var correoFinal  = "";
+    if (correoRaw && correoRaw !== "S/D" && correoRaw !== "S/N") {
+      var regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      var dominioFicticio = correoRaw.toLowerCase().indexOf("notiene") === -1;
+      if (regexEmail.test(correoRaw) && dominioFicticio) {
+        correoValido = true;
+        correoFinal  = correoRaw;
+      }
+    }
+
+    // Validar teléfono
+    var telefonoValido = false;
+    var telefonoFinal  = "";
+    if (contactoRaw && contactoRaw !== "S/D" && contactoRaw !== "S/N") {
+      var soloDigitos = contactoRaw.replace(/[^0-9]/g, "");
+      if (soloDigitos.length >= 8) {
+        telefonoValido = true;
+        telefonoFinal  = contactoRaw; // conservar formato original con +56
+      }
+    }
+
+    return {
+      success:        true,
+      rut:            usuario.rut,
+      nombre:         usuario.nombre,
+      correo:         correoFinal,
+      correoValido:   correoValido,
+      telefono:       telefonoFinal,
+      telefonoValido: telefonoValido,
+      estado:         usuario.estado,
+      rol:            usuario.rol
+    };
+  } catch (e) {
+    Logger.log("Error obtenerDatosDenunciante: " + e.toString());
+    return { success: false, message: "Error al obtener datos: " + e.toString() };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 2. obtenerDirigentesActivos
+// ─────────────────────────────────────────────────────────────
+/**
+ * Lee la hoja DIRECTORIO de BD_DENUNCIAS_INTERNAS.
+ * Retorna array de dirigentes con ESTADO = "Activo".
+ */
+function obtenerDirigentesActivos() {
+  try {
+    var ss    = SpreadsheetApp.openById(BD_DENUNCIAS_ID);
+    var sheet = ss.getSheetByName("DIRECTORIO");
+    if (!sheet) return { success: false, message: "Hoja DIRECTORIO no encontrada." };
+
+    var data = sheet.getDataRange().getDisplayValues();
+    var dirigentes = [];
+
+    for (var i = 1; i < data.length; i++) {
+      var fila = data[i];
+      if (String(fila[6]).trim().toLowerCase() === "activo") {
+        dirigentes.push({
+          rut:    String(fila[0]).trim(),
+          nombre: String(fila[1]).trim(),
+          cargo:  String(fila[2]).trim()
+        });
+      }
+    }
+
+    return { success: true, dirigentes: dirigentes };
+  } catch (e) {
+    Logger.log("Error obtenerDirigentesActivos: " + e.toString());
+    return { success: false, message: "Error al obtener directorio: " + e.toString() };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 3. obtenerEstadoSwitchDenuncias
+// ─────────────────────────────────────────────────────────────
+function obtenerEstadoSwitchDenuncias() {
+  try {
+    var props   = PropertiesService.getScriptProperties();
+    var estado  = props.getProperty("denuncias_habilitado");
+    var habilitado = (estado === null || estado === "true");
+    return { success: true, habilitado: habilitado };
+  } catch (e) {
+    return { success: true, habilitado: true };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 4. toggleSwitchDenuncias
+// ─────────────────────────────────────────────────────────────
+function toggleSwitchDenuncias(estado) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty("denuncias_habilitado", estado ? "true" : "false");
+
+    // Sincronizar con CONFIG_DENUNCIAS en el Sheets
+    try {
+      var ss    = SpreadsheetApp.openById(BD_DENUNCIAS_ID);
+      var sheet = ss.getSheetByName("CONFIG_DENUNCIAS");
+      if (sheet) {
+        var data = sheet.getDataRange().getDisplayValues();
+        for (var i = 1; i < data.length; i++) {
+          if (String(data[i][0]).trim() === "MODULO_ACTIVO") {
+            sheet.getRange(i + 1, 2).setValue(estado ? "TRUE" : "FALSE");
+            break;
+          }
+        }
+      }
+    } catch (eSync) {
+      Logger.log("Advertencia sync CONFIG_DENUNCIAS: " + eSync.toString());
+    }
+
+    return { success: true, habilitado: estado };
+  } catch (e) {
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 5. generarFolioDenuncia
+// ─────────────────────────────────────────────────────────────
+/**
+ * Genera un folio único DEN-YYYYMMDD-XXXX verificando que no exista
+ * ya en la hoja DENUNCIAS.
+ */
+function generarFolioDenuncia() {
+  try {
+    var ss    = SpreadsheetApp.openById(BD_DENUNCIAS_ID);
+    var sheet = ss.getSheetByName("DENUNCIAS");
+    var foliosExistentes = [];
+
+    if (sheet && sheet.getLastRow() > 1) {
+      var ids = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getDisplayValues();
+      ids.forEach(function(r) { foliosExistentes.push(String(r[0]).trim()); });
+    }
+
+    var hoy    = new Date();
+    var fecha  = Utilities.formatDate(hoy, Session.getScriptTimeZone(), "yyyyMMdd");
+    var chars  = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    var folio  = "";
+    var intentos = 0;
+
+    do {
+      var sufijo = "";
+      for (var i = 0; i < 4; i++) {
+        sufijo += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      folio = "DEN-" + fecha + "-" + sufijo;
+      intentos++;
+    } while (foliosExistentes.indexOf(folio) !== -1 && intentos < 100);
+
+    return folio;
+  } catch (e) {
+    Logger.log("Error generarFolioDenuncia: " + e.toString());
+    // Fallback con timestamp
+    return "DEN-" + new Date().getTime();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 6. generarTokenRespuesta
+// ─────────────────────────────────────────────────────────────
+function generarTokenRespuesta(folio) {
+  var chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  var token = "";
+  for (var i = 0; i < 32; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token + "_" + cleanRut(folio).replace(/-/g, "");
+}
+
+// ─────────────────────────────────────────────────────────────
+// 7. generarPdfDenuncia
+// ─────────────────────────────────────────────────────────────
+/**
+ * Genera un PDF formal de la denuncia y lo guarda en carpetaId.
+ * Retorna { success, url, fileId } o { success: false, message }
+ */
+function generarPdfDenuncia(datos, carpetaId) {
+  try {
+    var fechaFormateada = Utilities.formatDate(
+      new Date(), Session.getScriptTimeZone(), "dd 'de' MMMM 'de' yyyy"
+    );
+
+    // Bloque de derechos según categoría
+    var bloqueDerecho = "";
+    var cat = String(datos.categoria || "").toLowerCase();
+    if (cat.indexOf("karin") !== -1) {
+      bloqueDerecho = "\n⚖️ DERECHOS BAJO LEY KARIN (Ley 21.643):\n" +
+        "• Derecho a medidas de resguardo inmediatas (cambio de puesto, turno o lugar de trabajo).\n" +
+        "• Prohibición de represalias: toda conducta de represalia es sancionada por ley.\n" +
+        "• Plazo legal de investigación: 30 días hábiles desde la recepción de la denuncia.\n" +
+        "• Derecho a ser informado del resultado de la investigación.\n" +
+        "• Confidencialidad de la identidad del denunciante durante todo el proceso.\n";
+    } else if (cat.indexOf("seguridad") !== -1 || cat.indexOf("prevenci") !== -1) {
+      bloqueDerecho = "\n🦺 DERECHOS EN SEGURIDAD Y PREVENCIÓN:\n" +
+        "• El empleador está obligado a tomar medidas correctivas en los plazos que determine la investigación.\n" +
+        "• Tiene derecho a negarse a trabajar en condiciones que pongan en riesgo su vida o salud (Art. 184 bis).\n" +
+        "• Plazo de investigación: hasta 30 días hábiles.\n";
+    } else if (cat.indexOf("remuneraci") !== -1) {
+      bloqueDerecho = "\n💰 DERECHOS CONTRACTUALES Y DE REMUNERACIÓN:\n" +
+        "• El empleador debe subsanar el error en la próxima liquidación de sueldo.\n" +
+        "• Las cotizaciones previsionales son irrenunciables e inembargables.\n" +
+        "• Plazo de investigación: hasta 30 días hábiles.\n";
+    } else if (cat.indexOf("discriminaci") !== -1) {
+      bloqueDerecho = "\n🤝 DERECHOS ANTE DISCRIMINACIÓN (Art. 2 Cód. del Trabajo):\n" +
+        "• Las distinciones basadas en raza, sexo, edad, religión u opinión política son ilegales.\n" +
+        "• Tiene derecho a indemnización por daño moral ante actos discriminatorios acreditados.\n" +
+        "• Plazo de investigación: hasta 30 días hábiles.\n";
+    }
+
+    var etiquetaGestion = datos.tipoGestion === "Dirigente"
+      ? "Gestionado por dirigente: " + (datos.nombreGestor || "") + "\n"
+      : "";
+
+    // Crear Google Doc temporal
+    var docTitle = datos.folio + "_DENUNCIA_TEMP";
+    var doc = DocumentApp.create(docTitle);
+    var body = doc.getBody();
+
+    // Estilo base
+    body.setMarginTop(54);
+    body.setMarginBottom(54);
+    body.setMarginLeft(72);
+    body.setMarginRight(72);
+
+    // ── CABECERA ──
+    var header = body.appendParagraph("SINDICATO DE TRABAJADORES SLIM N°3 — HOLDING ISS CHILE");
+    header.setHeading(DocumentApp.ParagraphHeading.HEADING1);
+    header.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    header.editAsText().setFontSize(13).setBold(true).setForegroundColor("#7f1d1d");
+
+    body.appendParagraph("Sistema de Gestión SLIMAPP — Módulo Denuncias Internas")
+      .setAlignment(DocumentApp.HorizontalAlignment.CENTER)
+      .editAsText().setFontSize(9).setForegroundColor("#6b7280").setBold(false);
+
+    body.appendParagraph("─".repeat(80))
+      .editAsText().setFontSize(8).setForegroundColor("#d1d5db");
+
+    // Folio y fecha
+    var folioP = body.appendParagraph("FOLIO: " + datos.folio + "    |    " + fechaFormateada);
+    folioP.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    folioP.editAsText().setFontSize(11).setBold(true).setForegroundColor("#7f1d1d");
+
+    body.appendParagraph(" ");
+
+    // ── DATOS DEL DENUNCIANTE ──
+    body.appendParagraph("DATOS DEL DENUNCIANTE")
+      .setHeading(DocumentApp.ParagraphHeading.HEADING2)
+      .editAsText().setFontSize(11).setBold(true).setForegroundColor("#1e293b");
+
+    var camposD = [
+      ["Nombre completo", datos.nombreDenunciante],
+      ["RUT", datos.rutDenunciante],
+      ["Correo de contacto", datos.correoDenunciante || "No registrado"],
+      ["Teléfono de contacto", datos.telefonoDenunciante || "No registrado"]
+    ];
+    if (datos.tipoGestion === "Dirigente") {
+      camposD.push(["Gestionado por", datos.nombreGestor + " (Dirigente)"]);
+    }
+    camposD.forEach(function(c) {
+      var p = body.appendParagraph("");
+      p.editAsText()
+        .appendText(c[0] + ": ").setBold(true).setFontSize(10).setForegroundColor("#374151")
+        .appendText(c[1]).setBold(false).setFontSize(10).setForegroundColor("#1f2937");
+    });
+
+    body.appendParagraph(" ");
+
+    // ── DATOS DE LA DENUNCIA ──
+    body.appendParagraph("DATOS DE LA DENUNCIA")
+      .setHeading(DocumentApp.ParagraphHeading.HEADING2)
+      .editAsText().setFontSize(11).setBold(true).setForegroundColor("#1e293b");
+
+    var camposC = [
+      ["Categoría", datos.categoria],
+      ["Subcategoría", datos.subcategoria],
+      ["Dirigida contra", datos.dirigidoATipo],
+      ["Nombre del denunciado", datos.nombreDenunciado],
+      ["Lugar de los hechos", datos.lugarTrabajo],
+      ["Fecha de registro", fechaFormateada]
+    ];
+    camposC.forEach(function(c) {
+      var p = body.appendParagraph("");
+      p.editAsText()
+        .appendText(c[0] + ": ").setBold(true).setFontSize(10).setForegroundColor("#374151")
+        .appendText(c[1]).setBold(false).setFontSize(10).setForegroundColor("#1f2937");
+    });
+
+    body.appendParagraph(" ");
+
+    // ── DERECHOS ──
+    if (bloqueDerecho) {
+      body.appendParagraph("DERECHOS Y PROTECCIONES APLICABLES")
+        .setHeading(DocumentApp.ParagraphHeading.HEADING2)
+        .editAsText().setFontSize(11).setBold(true).setForegroundColor("#92400e");
+
+      body.appendParagraph(bloqueDerecho.trim())
+        .editAsText().setFontSize(10).setForegroundColor("#78350f").setBold(false);
+
+      body.appendParagraph(" ");
+    }
+
+    // ── DESCRIPCIÓN DE LOS HECHOS ──
+    body.appendParagraph("DESCRIPCIÓN DE LOS HECHOS")
+      .setHeading(DocumentApp.ParagraphHeading.HEADING2)
+      .editAsText().setFontSize(11).setBold(true).setForegroundColor("#1e293b");
+
+    body.appendParagraph(datos.descripcionHechos || "")
+      .editAsText().setFontSize(10).setForegroundColor("#1f2937").setBold(false);
+
+    body.appendParagraph(" ");
+
+    // Adjunto
+    if (datos.urlAdjunto && datos.urlAdjunto !== "Sin archivo") {
+      body.appendParagraph("Archivo de respaldo adjunto: " + datos.urlAdjunto)
+        .editAsText().setFontSize(10).setForegroundColor("#1d4ed8").setBold(false);
+    }
+
+    body.appendParagraph(" ");
+
+    // ── AVISO LEGAL ──
+    body.appendParagraph("AVISO LEGAL")
+      .setHeading(DocumentApp.ParagraphHeading.HEADING2)
+      .editAsText().setFontSize(11).setBold(true).setForegroundColor("#1e293b");
+
+    body.appendParagraph(
+      "Esta denuncia ha sido registrada formalmente en el sistema de gestión del Sindicato de " +
+      "Trabajadores SLIM N°3 con fecha y hora de registro verificable. Su contenido será remitido " +
+      "al área legal de Recursos Humanos y al directorio sindical para activar el protocolo de " +
+      "investigación correspondiente. El plazo legal de investigación es de 30 días hábiles desde " +
+      "la recepción formal. Toda represalia contra el denunciante está expresamente prohibida por " +
+      "la legislación vigente y será objeto de denuncia ante la Dirección del Trabajo."
+    ).editAsText().setFontSize(9).setForegroundColor("#6b7280").setBold(false);
+
+    body.appendParagraph(" ");
+    body.appendParagraph("─".repeat(80))
+      .editAsText().setFontSize(8).setForegroundColor("#d1d5db");
+
+    body.appendParagraph("Folio: " + datos.folio + " | Generado por SLIMAPP — Sindicato de Trabajadores SLIM N°3 | " + fechaFormateada)
+      .setAlignment(DocumentApp.HorizontalAlignment.CENTER)
+      .editAsText().setFontSize(8).setForegroundColor("#9ca3af").setBold(false);
+
+    doc.saveAndClose();
+
+    // Exportar como PDF
+    var docId  = doc.getId();
+    var pdfBlob = DriveApp.getFileById(docId).getAs("application/pdf");
+    pdfBlob.setName(datos.folio + "_DENUNCIA.pdf");
+
+    // Subir PDF a la carpeta del expediente
+    var carpeta  = DriveApp.getFolderById(carpetaId);
+    var archivo  = carpeta.createFile(pdfBlob);
+    archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    // Eliminar Doc temporal de Drive
+    DriveApp.getFileById(docId).setTrashed(true);
+
+    return { success: true, url: archivo.getUrl(), fileId: archivo.getId(), blob: pdfBlob };
+
+  } catch (e) {
+    Logger.log("Error generarPdfDenuncia: " + e.toString());
+    return { success: false, message: "Error al generar PDF: " + e.toString() };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 8. registrarDenuncia  (función principal)
+// ─────────────────────────────────────────────────────────────
+/**
+ * payload = {
+ *   rutGestor, rutBeneficiario,
+ *   categoria, subcategoria,
+ *   dirigidoATipo, nombreDenunciado,
+ *   lugarTrabajo, descripcionHechos,
+ *   archivoData: { base64, mimeType, nombre } | null
+ * }
+ */
+function registrarDenuncia(payload) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    return { success: false, message: "Servidor ocupado. Intenta nuevamente." };
+  }
+
+  try {
+    // ── Validar gestor ──────────────────────────────────────
+    var gestor = obtenerUsuarioPorRut(payload.rutGestor);
+    if (!gestor.encontrado) {
+      return { success: false, message: "Sesión inválida. Vuelve a iniciar sesión." };
+    }
+
+    // ── Determinar beneficiario ─────────────────────────────
+    var esGestionDirigente = payload.rutBeneficiario &&
+      cleanRut(payload.rutBeneficiario) !== cleanRut(payload.rutGestor);
+
+    var beneficiario;
+    if (esGestionDirigente) {
+      beneficiario = obtenerUsuarioPorRut(payload.rutBeneficiario);
+      if (!beneficiario.encontrado) {
+        return { success: false, message: "RUT del socio beneficiario no encontrado en el sistema." };
+      }
+    } else {
+      beneficiario = gestor;
+    }
+
+    // ── Validar datos de contacto del beneficiario ──────────
+    var datosContacto = obtenerDatosDenunciante(beneficiario.rut);
+    if (!datosContacto.success) {
+      return { success: false, message: datosContacto.message };
+    }
+    // Bloqueo solo si el gestor es el mismo que el beneficiario
+    if (!esGestionDirigente) {
+      if (!datosContacto.correoValido) {
+        return {
+          success: false,
+          message: "Debes tener un correo electrónico válido registrado para realizar esta gestión. Actualiza tus datos en 'Mis Datos' antes de continuar.",
+          tipo: "sin_correo"
+        };
+      }
+      if (!datosContacto.telefonoValido) {
+        return {
+          success: false,
+          message: "Debes tener un número de teléfono válido registrado para realizar esta gestión. Actualiza tus datos en 'Mis Datos' antes de continuar.",
+          tipo: "sin_telefono"
+        };
+      }
+    }
+
+    // ── Generar folio y token ───────────────────────────────
+    var folio = generarFolioDenuncia();
+    var token = generarTokenRespuesta(folio);
+
+    // ── Crear subcarpeta en Drive ───────────────────────────
+    var carpetaRaiz = DriveApp.getFolderById(CARPETA_DENUNCIAS_ID);
+    var carpetaExp  = carpetaRaiz.createFolder(folio);
+    var carpetaExpId = carpetaExp.getId();
+
+    // ── Subir archivo adjunto del socio (si existe) ─────────
+    var urlAdjunto = "Sin archivo";
+    if (payload.archivoData && payload.archivoData.base64) {
+      try {
+        var decoded  = Utilities.base64Decode(payload.archivoData.base64);
+        var blob     = Utilities.newBlob(decoded, payload.archivoData.mimeType,
+          folio + "_RESPALDO." + obtenerExtension(payload.archivoData.nombre));
+        var fileAdj  = carpetaExp.createFile(blob);
+        fileAdj.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        if (datosContacto.correoValido) {
+          fileAdj.addViewer(datosContacto.correo);
+        }
+        urlAdjunto = fileAdj.getUrl();
+      } catch (eAdj) {
+        Logger.log("Advertencia subida adjunto denuncia: " + eAdj.toString());
+      }
+    }
+
+    // ── Generar PDF ─────────────────────────────────────────
+    var datosPdf = {
+      folio:             folio,
+      rutDenunciante:    beneficiario.rut,
+      nombreDenunciante: beneficiario.nombre,
+      correoDenunciante: datosContacto.correo || "No registrado",
+      telefonoDenunciante: datosContacto.telefono || "No registrado",
+      tipoGestion:       esGestionDirigente ? "Dirigente" : "Propio",
+      nombreGestor:      esGestionDirigente ? gestor.nombre : "",
+      categoria:         payload.categoria,
+      subcategoria:      payload.subcategoria,
+      dirigidoATipo:     payload.dirigidoATipo,
+      nombreDenunciado:  payload.nombreDenunciado,
+      lugarTrabajo:      payload.lugarTrabajo,
+      descripcionHechos: payload.descripcionHechos,
+      urlAdjunto:        urlAdjunto
+    };
+
+    var resultadoPdf = generarPdfDenuncia(datosPdf, carpetaExpId);
+    var pdfUrl = resultadoPdf.success ? resultadoPdf.url : "Error al generar PDF";
+
+    // Dar acceso al PDF al beneficiario
+    if (resultadoPdf.success && datosContacto.correoValido) {
+      try {
+        DriveApp.getFileById(resultadoPdf.fileId).addViewer(datosContacto.correo);
+      } catch (eVw) { /* no crítico */ }
+    }
+
+    // ── Construir URL del portal de respuesta ───────────────
+    var urlPortal = obtenerUrlPortalRespuesta(token, folio);
+
+    // ── Registrar en BD_DENUNCIAS_INTERNAS ──────────────────
+    var ss    = SpreadsheetApp.openById(BD_DENUNCIAS_ID);
+    var sheet = ss.getSheetByName("DENUNCIAS");
+    if (!sheet) throw new Error("Hoja DENUNCIAS no encontrada en BD_DENUNCIAS_INTERNAS.");
+
+    var fechaHoy = new Date();
+    var nuevaFila = new Array(27).fill("");
+    nuevaFila[COL_DEN.ID_DENUNCIA]            = folio;
+    nuevaFila[COL_DEN.FECHA_REGISTRO]         = Utilities.formatDate(fechaHoy, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
+    nuevaFila[COL_DEN.RUT_DENUNCIANTE]        = beneficiario.rut;
+    nuevaFila[COL_DEN.NOMBRE_DENUNCIANTE]     = beneficiario.nombre;
+    nuevaFila[COL_DEN.RUT_GESTOR]             = gestor.rut;
+    nuevaFila[COL_DEN.NOMBRE_GESTOR]          = gestor.nombre;
+    nuevaFila[COL_DEN.TIPO_GESTION]           = esGestionDirigente ? "Dirigente" : "Propio";
+    nuevaFila[COL_DEN.CATEGORIA]              = payload.categoria;
+    nuevaFila[COL_DEN.SUBCATEGORIA]           = payload.subcategoria;
+    nuevaFila[COL_DEN.DIRIGIDO_A_TIPO]        = payload.dirigidoATipo;
+    nuevaFila[COL_DEN.NOMBRE_DENUNCIADO]      = payload.nombreDenunciado;
+    nuevaFila[COL_DEN.LUGAR_TRABAJO]          = payload.lugarTrabajo;
+    nuevaFila[COL_DEN.DESCRIPCION_HECHOS]     = payload.descripcionHechos;
+    nuevaFila[COL_DEN.URL_ARCHIVO_ADJUNTO]    = urlAdjunto;
+    nuevaFila[COL_DEN.ESTADO]                 = "Enviado";
+    nuevaFila[COL_DEN.CORREO_SOCIO]           = datosContacto.correo || "SIN_CORREO";
+    nuevaFila[COL_DEN.NOTIFICADO_EMPLEADOR]   = payload.dirigidoATipo === "Dirigente Sindical" ? "N/A" : "FALSE";
+    nuevaFila[COL_DEN.NOTIFICADO_DIRECTORIO]  = "FALSE";
+    nuevaFila[COL_DEN.NOTIFICADO_SOCIO]       = datosContacto.correoValido ? "FALSE" : "SIN_CORREO";
+    nuevaFila[COL_DEN.PDF_URL]                = pdfUrl;
+    nuevaFila[COL_DEN.CARPETA_DRIVE_ID]       = carpetaExpId;
+    nuevaFila[COL_DEN.TOKEN_RESPUESTA]        = token;
+
+    sheet.appendRow(nuevaFila);
+    var filaRegistro = sheet.getLastRow();
+
+    // ── Envío de correos ────────────────────────────────────
+    var esDirigenteSindical = (payload.dirigidoATipo === "Dirigente Sindical");
+
+    // Datos base para correos
+    var detallesBase = {
+      "Folio":                folio,
+      "Fecha":                Utilities.formatDate(fechaHoy, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm"),
+      "Nombre denunciante":   beneficiario.nombre,
+      "RUT denunciante":      formatRutServer(beneficiario.rut),
+      "Categoría":            payload.categoria,
+      "Subcategoría":         payload.subcategoria,
+      "Dirigida contra":      payload.dirigidoATipo + ": " + payload.nombreDenunciado,
+      "Lugar de hechos":      payload.lugarTrabajo
+    };
+
+    var linkPdf = pdfUrl && pdfUrl.includes("http")
+      ? "<a href='" + pdfUrl + "' style='color:#c62828;font-weight:bold;'>Ver Denuncia Formal (PDF)</a>"
+      : "PDF no disponible";
+
+    var detallesConPdf = Object.assign({}, detallesBase, { "Denuncia Formal": linkPdf });
+
+    // 1. Correo al SOCIO denunciante
+    if (datosContacto.correoValido) {
+      try {
+        enviarCorreoEstilizado(
+          datosContacto.correo,
+          "Denuncia Interna Registrada — Folio: " + folio + " — Sindicato SLIM n°3",
+          "Tu Denuncia Ha Sido Registrada",
+          "Hola <strong>" + beneficiario.nombre + "</strong>, tu denuncia interna ha sido registrada correctamente en el sistema con el folio <strong>" + folio + "</strong>. " +
+          "Guarda este número para hacer seguimiento. A continuación los detalles:",
+          detallesConPdf,
+          "#c62828"
+        );
+        sheet.getRange(filaRegistro, COL_DEN.NOTIFICADO_SOCIO + 1).setValue("TRUE");
+      } catch (eS) {
+        Logger.log("Error correo socio denuncia: " + eS.toString());
+      }
+    }
+
+    // 2. Correo al DIRECTORIO (siempre)
+    try {
+      var detallesDirectorio = Object.assign({}, detallesConPdf);
+      if (esGestionDirigente) {
+        detallesDirectorio["Gestionado por"] = gestor.nombre + " (Dirigente)";
+      }
+      var linkPortal = "";
+      if (!esDirigenteSindical && urlPortal) {
+        linkPortal = "<br><br><strong>📎 Portal de respuesta para el empleador:</strong><br>" +
+          "<a href='" + urlPortal + "' style='color:#1565c0;font-weight:bold;'>" + urlPortal + "</a>";
+      }
+      enviarCorreoEstilizado(
+        CORREO_DIRECTORIO_DENUNCIAS,
+        "⚠️ Nueva Denuncia Interna — Folio: " + folio,
+        "Nueva Denuncia Interna Recibida",
+        "Se ha registrado una nueva denuncia interna en el sistema. Folio: <strong>" + folio + "</strong>." + linkPortal,
+        detallesDirectorio,
+        "#1a237e"
+      );
+      sheet.getRange(filaRegistro, COL_DEN.NOTIFICADO_DIRECTORIO + 1).setValue("TRUE");
+    } catch (eD) {
+      Logger.log("Error correo directorio denuncia: " + eD.toString());
+    }
+
+    // 3. Correo al EMPLEADOR (solo si NO es denuncia contra dirigente sindical)
+    if (!esDirigenteSindical) {
+      try {
+        var linkPortalEmpleador = urlPortal
+          ? "<br><br>Para ingresar el resultado de su investigación, utilice el siguiente enlace seguro:<br>" +
+            "<a href='" + urlPortal + "' style='background:#c62828;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block;margin-top:8px;'>Ingresar Resultado de Investigación — Folio " + folio + "</a>"
+          : "";
+
+        enviarCorreoEstilizado(
+          CORREO_EMPLEADOR_DENUNCIAS,
+          "Notificación de Denuncia Interna — Folio: " + folio + " — Sindicato SLIM n°3",
+          "Notificación Formal de Denuncia Interna",
+          "Se notifica formalmente la presentación de una denuncia interna con respaldo del Sindicato de Trabajadores SLIM N°3. " +
+          "El folio de seguimiento es <strong>" + folio + "</strong>. El documento formal se adjunta al presente correo. " +
+          "Conforme a la normativa vigente, dispone de <strong>30 días hábiles</strong> para completar la investigación." +
+          linkPortalEmpleador,
+          detallesConPdf,
+          "#c62828"
+        );
+        sheet.getRange(filaRegistro, COL_DEN.NOTIFICADO_EMPLEADOR + 1).setValue("TRUE");
+      } catch (eE) {
+        Logger.log("Error correo empleador denuncia: " + eE.toString());
+      }
+    }
+
+    // Correo de respaldo al DIRIGENTE gestor (si aplica)
+    if (esGestionDirigente && esCorreoValido(gestor.correo)) {
+      try {
+        enviarCorreoEstilizado(
+          gestor.correo,
+          "Respaldo Gestión Denuncia — Folio: " + folio,
+          "Denuncia Registrada en Representación",
+          "Has registrado exitosamente una denuncia interna en representación del socio <strong>" + beneficiario.nombre + "</strong>. Folio: <strong>" + folio + "</strong>.",
+          Object.assign({}, detallesConPdf, { "Socio representado": beneficiario.nombre }),
+          "#475569"
+        );
+      } catch (eG) { /* no crítico */ }
+    }
+
+    return {
+      success:  true,
+      folio:    folio,
+      pdfUrl:   pdfUrl,
+      message:  "Denuncia registrada exitosamente con folio " + folio + ". Se han enviado las notificaciones correspondientes."
+    };
+
+  } catch (e) {
+    Logger.log("❌ Error registrarDenuncia: " + e.toString());
+    return { success: false, message: "Error al registrar la denuncia: " + e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 9. obtenerMisDenuncias
+// ─────────────────────────────────────────────────────────────
+/**
+ * Retorna el historial de denuncias del socio (solo campos visibles).
+ */
+function obtenerMisDenuncias(rut) {
+  try {
+    var ss    = SpreadsheetApp.openById(BD_DENUNCIAS_ID);
+    var sheet = ss.getSheetByName("DENUNCIAS");
+    if (!sheet || sheet.getLastRow() < 2) return { success: true, denuncias: [] };
+
+    var data       = sheet.getDataRange().getDisplayValues();
+    var rutLimpio  = cleanRut(rut);
+    var resultado  = [];
+
+    for (var i = 1; i < data.length; i++) {
+      var fila = data[i];
+      if (cleanRut(fila[COL_DEN.RUT_DENUNCIANTE]) === rutLimpio) {
+        resultado.push({
+          folio:          fila[COL_DEN.ID_DENUNCIA],
+          fecha:          fila[COL_DEN.FECHA_REGISTRO],
+          categoria:      fila[COL_DEN.CATEGORIA],
+          subcategoria:   fila[COL_DEN.SUBCATEGORIA],
+          dirigidoA:      fila[COL_DEN.DIRIGIDO_A_TIPO],
+          nombreDenunciado: fila[COL_DEN.NOMBRE_DENUNCIADO],
+          lugarTrabajo:   fila[COL_DEN.LUGAR_TRABAJO],
+          estado:         fila[COL_DEN.ESTADO],
+          pdfUrl:         fila[COL_DEN.PDF_URL],
+          tipoGestion:    fila[COL_DEN.TIPO_GESTION],
+          nombreGestor:   fila[COL_DEN.NOMBRE_GESTOR]
+        });
+      }
+    }
+
+    // Más reciente primero
+    resultado.sort(function(a, b) {
+      return new Date(b.fecha) - new Date(a.fecha);
+    });
+
+    return { success: true, denuncias: resultado };
+  } catch (e) {
+    Logger.log("Error obtenerMisDenuncias: " + e.toString());
+    return { success: false, message: "Error al obtener historial: " + e.toString() };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 10. procesarRespuestaEmpleador
+// ─────────────────────────────────────────────────────────────
+/**
+ * Llamada desde Denuncia_Response.html cuando el empleador envía su respuesta.
+ * token        — token único de la denuncia
+ * resultado    — texto del resultado de la investigación
+ * archivoData  — { base64, mimeType, nombre } | null
+ */
+function procesarRespuestaEmpleador(token, resultado, archivoData) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    return { success: false, message: "Servidor ocupado. Intenta nuevamente." };
+  }
+
+  try {
+    var ss    = SpreadsheetApp.openById(BD_DENUNCIAS_ID);
+    var sheet = ss.getSheetByName("DENUNCIAS");
+    if (!sheet) throw new Error("Hoja DENUNCIAS no encontrada.");
+
+    var data      = sheet.getDataRange().getDisplayValues();
+    var filaEncontrada = -1;
+    var datosDen  = {};
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][COL_DEN.TOKEN_RESPUESTA]).trim() === String(token).trim()) {
+        filaEncontrada = i + 1; // 1-indexed para getRange
+        datosDen = {
+          folio:             data[i][COL_DEN.ID_DENUNCIA],
+          rutDenunciante:    data[i][COL_DEN.RUT_DENUNCIANTE],
+          nombreDenunciante: data[i][COL_DEN.NOMBRE_DENUNCIANTE],
+          correoSocio:       data[i][COL_DEN.CORREO_SOCIO],
+          categoria:         data[i][COL_DEN.CATEGORIA],
+          subcategoria:      data[i][COL_DEN.SUBCATEGORIA],
+          estado:            data[i][COL_DEN.ESTADO],
+          carpetaExpId:      data[i][COL_DEN.CARPETA_DRIVE_ID],
+          fechaRespuesta:    data[i][COL_DEN.FECHA_RESPUESTA_EMPLEADOR]
+        };
+        break;
+      }
+    }
+
+    if (filaEncontrada === -1) {
+      return { success: false, message: "El enlace de respuesta no es válido o ha expirado.", tipo: "token_invalido" };
+    }
+
+    // Bloquear doble respuesta
+    if (datosDen.fechaRespuesta && datosDen.fechaRespuesta.trim() !== "") {
+      return { success: false, message: "Esta denuncia ya cuenta con una respuesta registrada el " + datosDen.fechaRespuesta + ".", tipo: "ya_respondido" };
+    }
+
+    // Subir informe del empleador si existe
+    var urlInforme = "";
+    if (archivoData && archivoData.base64) {
+      try {
+        var carpetaExp = DriveApp.getFolderById(datosDen.carpetaExpId);
+        var decoded    = Utilities.base64Decode(archivoData.base64);
+        var blob       = Utilities.newBlob(decoded, archivoData.mimeType,
+          datosDen.folio + "_INFORME_EMPLEADOR." + obtenerExtension(archivoData.nombre));
+        var fileInf    = carpetaExp.createFile(blob);
+        fileInf.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        urlInforme = fileInf.getUrl();
+      } catch (eInf) {
+        Logger.log("Advertencia subida informe empleador: " + eInf.toString());
+      }
+    }
+
+    // Actualizar fila en DENUNCIAS
+    var fechaRespuesta = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
+    sheet.getRange(filaEncontrada, COL_DEN.FECHA_RESPUESTA_EMPLEADOR + 1).setValue(fechaRespuesta);
+    sheet.getRange(filaEncontrada, COL_DEN.RESULTADO_INVESTIGACION + 1).setValue(resultado);
+    sheet.getRange(filaEncontrada, COL_DEN.URL_INFORME_EMPLEADOR + 1).setValue(urlInforme || "Sin informe adjunto");
+    sheet.getRange(filaEncontrada, COL_DEN.ESTADO + 1).setValue("En Investigación");
+    sheet.getRange(filaEncontrada, COL_DEN.NOTIFICADO_CIERRE + 1).setValue("FALSE");
+
+    // Enviar correos de cierre
+    var linkInforme = urlInforme
+      ? "<a href='" + urlInforme + "' style='color:#1565c0;font-weight:bold;'>Ver Informe Adjunto</a>"
+      : "Sin informe adjunto";
+
+    var detallesCierre = {
+      "Folio":                   datosDen.folio,
+      "Fecha de respuesta":      fechaRespuesta,
+      "Categoría":               datosDen.categoria + " — " + datosDen.subcategoria,
+      "Resultado investigación":  resultado.substring(0, 300) + (resultado.length > 300 ? "..." : ""),
+      "Informe adjunto":         linkInforme
+    };
+
+    // Correo al SOCIO
+    if (esCorreoValido(datosDen.correoSocio)) {
+      try {
+        enviarCorreoEstilizado(
+          datosDen.correoSocio,
+          "Actualización Denuncia — Folio: " + datosDen.folio,
+          "Tu Denuncia Ha Sido Respondida",
+          "Hola <strong>" + datosDen.nombreDenunciante + "</strong>, el empleador ha ingresado el resultado de la investigación correspondiente a tu denuncia con folio <strong>" + datosDen.folio + "</strong>. A continuación el resumen:",
+          detallesCierre,
+          "#c62828"
+        );
+      } catch (eSC) { Logger.log("Error correo socio cierre: " + eSC.toString()); }
+    }
+
+    // Correo al DIRECTORIO
+    try {
+      enviarCorreoEstilizado(
+        CORREO_DIRECTORIO_DENUNCIAS,
+        "Respuesta de Empleador — Folio: " + datosDen.folio,
+        "El Empleador Ha Respondido la Denuncia",
+        "El empleador ha ingresado el resultado de la investigación para la denuncia con folio <strong>" + datosDen.folio + "</strong>.",
+        detallesCierre,
+        "#1a237e"
+      );
+    } catch (eDC) { Logger.log("Error correo directorio cierre: " + eDC.toString()); }
+
+    // Correo de confirmación al EMPLEADOR
+    try {
+      enviarCorreoEstilizado(
+        CORREO_EMPLEADOR_DENUNCIAS,
+        "Confirmación de Respuesta Registrada — Folio: " + datosDen.folio,
+        "Su Respuesta Ha Sido Registrada",
+        "Su respuesta a la denuncia con folio <strong>" + datosDen.folio + "</strong> ha sido registrada correctamente en el sistema del Sindicato de Trabajadores SLIM N°3. Las partes correspondientes han sido notificadas.",
+        { "Folio": datosDen.folio, "Fecha de registro": fechaRespuesta, "Estado": "En Investigación" },
+        "#c62828"
+      );
+    } catch (eEC) { Logger.log("Error correo confirmación empleador cierre: " + eEC.toString()); }
+
+    sheet.getRange(filaEncontrada, COL_DEN.NOTIFICADO_CIERRE + 1).setValue("TRUE");
+
+    return {
+      success:  true,
+      folio:    datosDen.folio,
+      message:  "Su respuesta ha sido registrada correctamente. Las partes notificadas."
+    };
+
+  } catch (e) {
+    Logger.log("❌ Error procesarRespuestaEmpleador: " + e.toString());
+    return { success: false, message: "Error al procesar la respuesta: " + e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 11. obtenerDenunciaPorToken  (helper para Denuncia_Response.html)
+// ─────────────────────────────────────────────────────────────
+/**
+ * Retorna datos básicos de la denuncia para mostrar en el portal del empleador.
+ */
+function obtenerDenunciaPorToken(token) {
+  try {
+    var ss    = SpreadsheetApp.openById(BD_DENUNCIAS_ID);
+    var sheet = ss.getSheetByName("DENUNCIAS");
+    if (!sheet) return { success: false, message: "Hoja no encontrada." };
+
+    var data = sheet.getDataRange().getDisplayValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][COL_DEN.TOKEN_RESPUESTA]).trim() === String(token).trim()) {
+        var yaRespondido = data[i][COL_DEN.FECHA_RESPUESTA_EMPLEADOR] &&
+          data[i][COL_DEN.FECHA_RESPUESTA_EMPLEADOR].trim() !== "";
+        return {
+          success:      true,
+          folio:        data[i][COL_DEN.ID_DENUNCIA],
+          fecha:        data[i][COL_DEN.FECHA_REGISTRO],
+          categoria:    data[i][COL_DEN.CATEGORIA],
+          subcategoria: data[i][COL_DEN.SUBCATEGORIA],
+          dirigidoA:    data[i][COL_DEN.DIRIGIDO_A_TIPO],
+          estado:       data[i][COL_DEN.ESTADO],
+          yaRespondido: yaRespondido
+        };
+      }
+    }
+    return { success: false, message: "Enlace inválido o expirado.", tipo: "token_invalido" };
+  } catch (e) {
+    return { success: false, message: "Error: " + e.toString() };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 12. Helpers internos del módulo
+// ─────────────────────────────────────────────────────────────
+function obtenerExtension(nombreArchivo) {
+  if (!nombreArchivo) return "bin";
+  var partes = String(nombreArchivo).split(".");
+  return partes.length > 1 ? partes[partes.length - 1].toLowerCase() : "bin";
+}
+
+function obtenerUrlPortalRespuesta(token, folio) {
+  try {
+    var ss    = SpreadsheetApp.openById(BD_DENUNCIAS_ID);
+    var sheet = ss.getSheetByName("CONFIG_DENUNCIAS");
+    if (!sheet) return "";
+    var data = sheet.getDataRange().getDisplayValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === "URL_PORTAL_RESPUESTA") {
+        var base = String(data[i][1]).trim();
+        if (base && base.startsWith("http")) {
+          return base + "?token=" + encodeURIComponent(token) + "&folio=" + encodeURIComponent(folio);
+        }
+        break;
+      }
+    }
+    return "";
+  } catch (e) {
+    return "";
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// FIN MÓDULO DENUNCIAS INTERNAS
+// ─────────────────────────────────────────────────────────────
