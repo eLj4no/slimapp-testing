@@ -241,84 +241,11 @@
     </div>
   </div>
 
-  <!-- CARD -->
+  <-- CARD -->
   <div class="card">
-
-    <!-- Cargando -->
-    <div class="screen active" id="screen-loading">
-      <div class="status-screen">
-        <div class="st-badge loading">
-          <svg viewBox="0 0 34 34" fill="none">
-            <circle cx="17" cy="17" r="13" stroke="#B5D4F4" stroke-width="2.5"/>
-            <path d="M17 4a13 13 0 0 1 13 13" stroke="#185FA5" stroke-width="2.5" stroke-linecap="round">
-              <animateTransform attributeName="transform" type="rotate" from="0 17 17" to="360 17 17" dur="0.75s" repeatCount="indefinite"/>
-            </path>
-          </svg>
-        </div>
-        <p class="st-title">Verificando acceso</p>
-        <p class="st-msg">Validando el enlace de respuesta. Por favor espere un momento.</p>
-      </div>
-    </div>
-
-    <!-- Error -->
-    <div class="screen" id="screen-error">
-      <div class="status-screen">
-        <div class="st-badge error">
-          <svg viewBox="0 0 34 34" fill="none">
-            <circle cx="17" cy="17" r="13" fill="#FCEBEB"/>
-            <line x1="17" y1="9" x2="17" y2="19" stroke="#A32D2D" stroke-width="2.5" stroke-linecap="round"/>
-            <circle cx="17" cy="24" r="1.5" fill="#A32D2D"/>
-          </svg>
-        </div>
-        <p class="st-title">Enlace no válido</p>
-        <p class="st-msg" id="error-msg">El enlace de respuesta no es válido o ha expirado. Verifique que la URL esté completa.</p>
-      </div>
-    </div>
-
-    <!-- Ya respondido -->
-    <div class="screen" id="screen-ya-respondido">
-      <div class="status-screen">
-        <div class="st-badge warn">
-          <svg viewBox="0 0 34 34" fill="none">
-            <circle cx="17" cy="17" r="13" fill="#FAEEDA"/>
-            <path d="M17 7l11 19H6L17 7z" stroke="#854F0B" stroke-width="2" stroke-linejoin="round" fill="none"/>
-            <line x1="17" y1="15" x2="17" y2="21" stroke="#854F0B" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="17" cy="25" r="1.4" fill="#854F0B"/>
-          </svg>
-        </div>
-        <p class="st-title">Ya registrado</p>
-        <p class="st-msg" id="ya-respondido-msg">Esta denuncia ya cuenta con una respuesta registrada. No es necesario realizar ninguna acción adicional.</p>
-      </div>
-    </div>
-
-    <!-- Éxito -->
-    <div class="screen" id="screen-exito">
-      <div class="status-screen">
-        <div class="st-badge ok">
-          <svg viewBox="0 0 34 34" fill="none">
-            <circle cx="17" cy="17" r="13" fill="#EAF3DE"/>
-            <path d="M10 17l5 5 9-9" stroke="#3B6D11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <p class="st-title">Resultado registrado</p>
-        <p class="st-msg" id="exito-msg"></p>
-        <div class="next-steps">
-          <h4>¿Qué ocurre ahora?</h4>
-          <ul>
-            <li>El denunciante fue notificado del resultado de la investigación.</li>
-            <li>El directorio sindical recibió una copia completa del cierre.</li>
-            <li>Se le envió una confirmación a su correo electrónico.</li>
-            <li>El expediente queda archivado con acceso permanente en Drive.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <!-- Formulario -->
     <div class="screen" id="screen-form">
       <div class="card-body">
 
-        <!-- Folio strip -->
         <div class="folio-strip">
           <div class="folio-icon-box">
             <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -339,60 +266,33 @@
           </div>
         </div>
 
-        <!-- Info grid -->
-        <p class="section-label">Datos de la denuncia</p>
-        <div class="info-grid">
-          <div class="info-cell span2">
-            <p class="info-key">Categoría y tipo</p>
-            <p class="info-val" id="info-categoria">—</p>
-          </div>
-          <div class="info-cell">
-            <p class="info-key">Dirigida contra</p>
-            <p class="info-val" id="info-dirigido">—</p>
-          </div>
-          <div class="info-cell">
-            <p class="info-key">Estado actual</p>
-            <p class="info-val" id="info-estado">—</p>
-          </div>
-        </div>
-
-        <!-- Aviso -->
-        <div class="aviso">
-          <div class="aviso-ico">
-            <svg viewBox="0 0 15 15" fill="currentColor">
-              <path d="M7.5 0a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 7.5 0zm-.625 3.75h1.25v5H6.875v-5zm0 6.25h1.25v1.25H6.875V10z"/>
-            </svg>
-          </div>
-          <p><strong>Aviso legal:</strong> La empresa dispone de <strong>30 días hábiles</strong> para completar la investigación. El resultado ingresado quedará registrado oficialmente y notificado a todas las partes. Este registro es <strong>irrevocable</strong>.</p>
-        </div>
-
-        <div class="hr"></div>
-
-        <!-- Campo resultado -->
         <div class="field">
-          <label class="field-label">Resultado de la investigación <span class="req">*</span></label>
-          <p class="field-hint">Describa detalladamente el proceso y resultado de la investigación: metodología utilizada, conclusiones obtenidas, medidas adoptadas y cualquier información relevante para el cierre formal del caso.</p>
-          <textarea id="resultado-textarea" rows="10" maxlength="5000"
-            placeholder="Ejemplo: En atención a la denuncia con el folio indicado, se procedió a iniciar la investigación interna el día... Se realizaron entrevistas con las partes involucradas... Las conclusiones obtenidas indican... Las medidas adoptadas por la empresa son..."
-            oninput="actualizarContador()"></textarea>
-          <div class="counter" id="contador">0 / 5000</div>
+          <label class="field-label">Resumen Ejecutivo o Comentario <span style="font-weight:400;color:var(--gray-500)">(Opcional)</span></label>
+          <div style="background:#E6F1FB; border-left:4px solid #185FA5; padding:12px; border-radius:8px; margin-bottom:12px;">
+            <p style="font-size:11px; color:#0C447C; line-height:1.5;">
+              <strong>Instrucción:</strong> Use este campo solo para una indicación breve o saludo. El detalle completo de la investigación y resolución final <strong>DEBE estar contenido en el informe adjunto</strong>.
+            </p>
+          </div>
+          <textarea id="resultado-textarea" rows="4" maxlength="500"
+            placeholder="Ej: Se adjunta informe oficial con la resolución del caso..."
+            oninput="actualizarContador()" style="min-height: 100px;"></textarea>
+          <div class="counter" id="contador">0 / 500</div>
         </div>
 
-        <!-- Upload -->
-        <div class="field" style="margin-top:18px">
-          <label class="field-label">Informe adjunto <span style="font-weight:400;color:var(--gray-500)">(opcional)</span></label>
-          <p class="field-hint">Puede adjuntar el informe formal de investigación en PDF, Word o imagen. Máximo 50 MB.</p>
-          <div class="upload-zone" id="upload-zone">
-            <input type="file" id="informe-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onchange="validarArchivo(this)">
-            <div class="upload-ico">
-              <svg viewBox="0 0 19 19" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <div class="field" style="margin-top:24px">
+          <label class="field-label">Informe Final de Investigación <span class="req">*</span></label>
+          <p class="field-hint">Debe adjuntar el documento formal (PDF o Word) que acredite el término del proceso. Este archivo es obligatorio para el cierre.</p>
+          <div class="upload-zone" id="upload-zone" style="background: var(--red-50); border-color: var(--red-200);">
+            <input type="file" id="informe-input" accept=".pdf,.doc,.docx" onchange="validarArchivo(this)">
+            <div class="upload-ico" style="background: var(--red-100);">
+              <svg viewBox="0 0 19 19" fill="none" stroke="var(--red-700)" stroke-width="1.5" stroke-linecap="round">
                 <path d="M3 13v2a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2"/>
                 <line x1="9.5" y1="2.5" x2="9.5" y2="11.5"/>
                 <polyline points="6.5 5.5 9.5 2.5 12.5 5.5"/>
               </svg>
             </div>
-            <h4>Seleccionar archivo</h4>
-            <p>PDF, Word o imagen — hasta 50 MB</p>
+            <h4 style="color: var(--red-800);">Seleccionar Informe Obligatorio</h4>
+            <p>PDF o Word — Máximo 50 MB</p>
           </div>
           <div class="attached-row" id="attached-row">
             <div class="attached-ico">
@@ -517,39 +417,46 @@
   function enviarRespuesta(){
     var res = document.getElementById("resultado-textarea").value.trim();
     var btn = document.getElementById("btn-enviar");
-    if (res.length < 50){
-      var ta = document.getElementById("resultado-textarea");
-      ta.style.borderColor="var(--red-400)";
-      ta.focus();
-      setTimeout(function(){ ta.style.borderColor=""; }, 2000);
+    
+    // Validación de archivo obligatorio (Imagen 2)
+    if (!archivoAdj) {
+      document.getElementById("upload-zone").style.borderColor = "var(--red-600)";
+      alert("Atención: El Informe Final de Investigación es obligatorio para registrar el resultado.");
       return;
     }
+
     btn.disabled = true;
-    btn.innerHTML = '<div class="spin"></div>Registrando resultado...';
+    btn.innerHTML = '<div class="spin"></div>Registrando resultado oficial...';
+
     function enviar(ad){
       google.script.run
         .withSuccessHandler(function(r){
           if (r.success){
             mostrar("exito");
-            document.getElementById("exito-msg").innerText = "El resultado de la investigación para el folio "+r.folio+" ha sido registrado correctamente. Todas las partes han sido notificadas.";
+            document.getElementById("exito-msg").innerText = "El resultado de la investigación para el folio "+r.folio+" ha sido registrado correctamente. Se ha enviado el informe a todas las partes involucradas.";
           } else {
             btn.disabled = false;
             btn.innerHTML = '<svg viewBox="0 0 17 17" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="8.5" x2="15" y2="8.5"/><polyline points="9.5 3 15 8.5 9.5 14"/></svg>Registrar resultado de investigación';
-            alert("Error: "+(r.message||"No se pudo registrar. Intente nuevamente."));
+            alert("Error: "+(r.message||"No se pudo registrar."));
           }
         })
         .withFailureHandler(function(){
           btn.disabled = false;
           btn.innerHTML = '<svg viewBox="0 0 17 17" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="8.5" x2="15" y2="8.5"/><polyline points="9.5 3 15 8.5 9.5 14"/></svg>Registrar resultado de investigación';
-          alert("Error de conexión. Intente nuevamente en unos minutos.");
+          alert("Error de conexión crítica.");
         })
         .procesarRespuestaEmpleador(tokenActual, res, ad);
     }
-    if (archivoAdj){
-      var rd = new FileReader();
-      rd.onload = function(e){ enviar({ base64: e.target.result.split(",")[1], mimeType: archivoAdj.type, nombre: archivoAdj.name }); };
-      rd.readAsDataURL(archivoAdj);
-    } else { enviar(null); }
+
+    var rd = new FileReader();
+    rd.onload = function(e){ 
+      enviar({ 
+        base64: e.target.result.split(",")[1], 
+        mimeType: archivoAdj.type, 
+        nombre: archivoAdj.name 
+      }); 
+    };
+    rd.readAsDataURL(archivoAdj);
   }
 </script>
 </body>
