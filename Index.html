@@ -2514,6 +2514,10 @@
               <div class="flex justify-between items-center">
                 <p class="text-[10px] text-slate-400 flex items-center gap-1"><span class="material-icons-round text-xs">auto_fix_high</span>El texto se formatea automáticamente.</p>
                 <p id="den-contador-hechos" class="text-[10px] font-bold text-slate-400">0 / 3000</p>
+              <p id="den-aviso-relato" class="hidden text-[10px] font-bold text-amber-600 flex items-center gap-1 mt-0.5">
+                <span class="material-icons-round text-xs">warning_amber</span>
+                Mínimo 50 caracteres para continuar.
+              </p>
               </div>
             </div>
  
@@ -9767,8 +9771,17 @@ divForm.classList.add('flex');
       function actualizarContadorHechos() {
         var l = document.getElementById('den-descripcion-hechos').value.length;
         var c = document.getElementById('den-contador-hechos');
+        var aviso = document.getElementById('den-aviso-relato');
         c.innerText = l+" / 3000";
         c.className = l>2700 ? "text-[10px] font-bold text-red-500" : "text-[10px] font-bold text-slate-400";
+        if (aviso) {
+          if (l > 0 && l < 50) {
+            aviso.classList.remove('hidden');
+          } else {
+            aviso.classList.add('hidden');
+          }
+        }
+        actualizarBotonEnviarDenuncia();
       }
  
       function toggleCampoAdjuntoDenuncia() {
@@ -9992,7 +10005,8 @@ divForm.classList.add('flex');
         if (!nombreDenunciado) { showWarning("Debes identificar al denunciado."); return; }
         
         var descripcion = (document.getElementById('den-descripcion-hechos').value || "").trim();
-        if (descripcion.length < 50) { showWarning("La descripción es muy breve."); return; }
+        if (descripcion.length < 50 && descripcion.length > 0) faltantes.push("Relato incompleto");
+        if (descripcion.length === 0) faltantes.push("Relato requerido");
         
         var lugar = (document.getElementById('den-lugar-trabajo').value || "").trim();
         if (!lugar) { showWarning("Debes indicar el lugar."); return; }
