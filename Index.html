@@ -9698,7 +9698,7 @@ divForm.classList.add('flex');
         var btn = document.getElementById('btn-enviar-denuncia');
         var tipo = document.getElementById('den-dirigido-tipo').value;
         var nombreDenunciado = "";
-        if (tipo==='Empleador') nombreDenunciado="Empleador (ISS Servicios SLIM S.A.)";
+        if (tipo==='Empleador') nombreDenunciado="Empleador (Representante legal - Holding ISS Chile)";
         else if (tipo==='Dirigente Sindical') nombreDenunciado=document.getElementById('den-select-dirigente').value;
         else nombreDenunciado=(document.getElementById('den-nombre-denunciado').value||"").trim();
         if (!nombreDenunciado) { showWarning("Debes identificar al denunciado para continuar."); return; }
